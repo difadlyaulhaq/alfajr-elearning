@@ -33,49 +33,84 @@ const AdminSidebar = () => {
   };
 
   const handleLogout = async () => {
-    setIsLoggingOut(true);
-    try {
-      console.log('Starting logout process...');
-      
-      // Method 1: Panggil API logout
-      const response = await fetch('/api/auth/logout', { 
-        method: 'POST',
-        credentials: 'include' // Pastikan cookies termasuk
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Logout failed with status: ${response.status}`);
+  setIsLoggingOut(true);
+  
+  try {
+    console.log('[CLIENT] 🚀 Starting logout...');
+    
+    // Step 1: Call logout API
+    const response = await fetch('/api/auth/logout', { 
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
       }
-      
-      console.log('API logout successful');
-      
-      // Method 2: Clear semua client storage
-      localStorage.clear();
-      sessionStorage.clear();
-      
-      // Method 3: Clear cookies client-side (backup)
-      document.cookie = 'auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-      document.cookie = 'user_role=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-      
-      // Force reload dan redirect ke login
-      setTimeout(() => {
-        window.location.href = '/login';
-      }, 500);
-      
-    } catch (error) {
-      console.error('Logout error:', error);
-      
-      // Fallback: langsung redirect dan clear storage
-      localStorage.clear();
-      sessionStorage.clear();
-      document.cookie = 'auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-      document.cookie = 'user_role=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-      
-      window.location.href = '/login';
-    } finally {
-      setIsLoggingOut(false);
+    });
+    
+    console.log('[CLIENT] Logout API status:', response.status);
+    
+    // Check response body
+    const data = await response.json();
+    console.log('[CLIENT] Logout API response:', data);
+    
+    if (!response.ok) {
+      throw new Error(`Logout failed: ${response.status}`);
     }
-  };
+    
+    // Step 2: Clear ALL storage
+    console.log('[CLIENT] Clearing storage...');
+    localStorage.clear();
+    sessionStorage.clear();
+    
+    // Step 3: Clear ALL cookies (aggressive)
+    console.log('[CLIENT] Clearing cookies...');
+    const cookies = document.cookie.split(';');
+    
+    for (let cookie of cookies) {
+      const eqPos = cookie.indexOf('=');
+      const name = eqPos > -1 ? cookie.substring(0, eqPos).trim() : cookie.trim();
+      
+      // Clear dengan berbagai kombinasi
+      document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+      document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${window.location.hostname};`;
+      document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; secure;`;
+      
+      console.log(`[CLIENT] Cleared cookie: ${name}`);
+    }
+    
+    // Step 4: Wait a bit for cookies to clear
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    console.log('[CLIENT] ✅ Logout complete, redirecting...');
+    
+    // Step 5: Hard redirect (force reload)
+    window.location.href = '/login';
+    
+  } catch (error) {
+    console.error('[CLIENT] ❌ Logout error:', error);
+    
+    // Fallback: Nuclear option
+    console.log('[CLIENT] Using fallback logout method...');
+    
+    // Clear everything
+    localStorage.clear();
+    sessionStorage.clear();
+    
+    // Clear all cookies aggressively
+    document.cookie.split(';').forEach(cookie => {
+      const name = cookie.split('=')[0].trim();
+      document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+    });
+    
+    // Force redirect
+    setTimeout(() => {
+      window.location.href = '/login';
+    }, 100);
+    
+  } finally {
+    setIsLoggingOut(false);
+  }
+};
 
   const menuItems: MenuItem[] = [
     {

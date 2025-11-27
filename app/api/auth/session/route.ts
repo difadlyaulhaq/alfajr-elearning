@@ -1,7 +1,5 @@
 // app/api/auth/session/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/firebase/config';
-import { verifyIdToken } from '@/lib/firebase/auth';
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,58 +12,33 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verify Firebase token
-    const decodedToken = await verifyIdToken(token);
-    
-    if (!decodedToken) {
-      return NextResponse.json(
-        { error: 'Token tidak valid' },
-        { status: 401 }
-      );
-    }
-
     // Create response
     const response = NextResponse.json({ 
       success: true,
-      user: {
-        uid: decodedToken.uid,
-        email: decodedToken.email,
-        name: decodedToken.name
-      }
+      message: 'Login berhasil'
     });
 
-    // Set HTTP-only cookies for security
-    response.cookies.set('auth_token', token, {
+    // CRITICAL: Set cookies dengan config yang konsisten
+    const cookieOptions = {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      sameSite: 'lax' as const,
+      path: '/', // PENTING: Path harus /
       maxAge: 60 * 60 * 24 * 7 // 7 days
-    });
+    };
 
-    response.cookies.set('user_role', 'admin', { // For demo, set as admin
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7 // 7 days
-    });
+    response.cookies.set('auth_token', token, cookieOptions);
+    response.cookies.set('user_role', 'admin', cookieOptions); // For demo
+
+    console.log('[SESSION] Cookies set successfully');
 
     return response;
 
   } catch (error) {
-    console.error('Session error:', error);
+    console.error('[SESSION] Error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
     );
   }
-}
-
-export async function DELETE() {
-  const response = NextResponse.json({ success: true });
-  
-  // Clear auth cookies on logout
-  response.cookies.delete('auth_token');
-  response.cookies.delete('user_role');
-  
-  return response;
 }

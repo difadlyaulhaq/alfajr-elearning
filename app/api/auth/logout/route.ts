@@ -1,66 +1,62 @@
 // app/api/auth/logout/route.ts
 import { NextResponse } from 'next/server';
-import { signOut } from 'firebase/auth';
-import { auth } from '@/lib/firebase/config';
 
 export async function POST() {
+  console.log('[LOGOUT API] 🚀 Starting logout process...');
+  
   try {
-    // Sign out dari Firebase
-    if (auth.currentUser) {
-      await signOut(auth);
-    }
+    const response = NextResponse.json(
+      { success: true, message: 'Logout berhasil' },
+      { status: 200 }
+    );
+
+    // ⚠️ CRITICAL FIX: Secure MUST be false in development!
+    const isProduction = process.env.NODE_ENV === 'production';
     
-    // Create response
-    const response = NextResponse.json({ 
-      success: true,
-      message: 'Logout berhasil'
-    });
+    console.log('[LOGOUT API] Environment:', process.env.NODE_ENV);
+    console.log('[LOGOUT API] isProduction:', isProduction);
 
-    // Clear auth cookies dengan cara yang lebih aggressive
-    response.cookies.set('auth_token', '', {
+    // Cookie options MUST be IDENTICAL to session/route.ts
+    const cookieOptions = {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 0, // Immediately expire
-      path: '/'
+      secure: isProduction, // ← FALSE in development (localhost)
+      sameSite: 'lax' as const,
+      path: '/',
+      maxAge: 0 // Delete immediately
+    };
+
+    console.log('[LOGOUT API] Cookie options:', cookieOptions);
+
+    // Delete both cookies
+    response.cookies.set('auth_token', '', cookieOptions);
+    response.cookies.set('user_role', '', cookieOptions);
+
+    // ALTERNATIVE: Use delete method (more explicit)
+    response.cookies.delete({
+      name: 'auth_token',
+      path: '/',
+    });
+    
+    response.cookies.delete({
+      name: 'user_role',
+      path: '/',
     });
 
-    response.cookies.set('user_role', '', {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 0, // Immediately expire
-      path: '/'
-    });
-
-    console.log('Cookies cleared successfully');
+    console.log('[LOGOUT API] ✅ Cookies deleted successfully');
 
     return response;
 
   } catch (error) {
-    console.error('Logout error:', error);
+    console.error('[LOGOUT API] ❌ Error:', error);
     
-    // Tetap clear cookies meski ada error Firebase
+    // Force clear cookies even on error
     const response = NextResponse.json(
-      { success: true, message: 'Logout completed with warnings' },
+      { success: true, message: 'Logout completed' },
       { status: 200 }
     );
     
-    response.cookies.set('auth_token', '', {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 0,
-      path: '/'
-    });
-
-    response.cookies.set('user_role', '', {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 0,
-      path: '/'
-    });
+    response.cookies.delete({ name: 'auth_token', path: '/' });
+    response.cookies.delete({ name: 'user_role', path: '/' });
     
     return response;
   }

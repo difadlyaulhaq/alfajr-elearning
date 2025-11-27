@@ -1,4 +1,4 @@
-// middleware.ts
+// proxy.ts (ROOT PROJECT) - Renamed from middleware.ts
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
@@ -6,9 +6,13 @@ import type { NextRequest } from 'next/server';
 const PUBLIC_ROUTES = [
   '/login', 
   '/forgot-password',
-  '/api/auth/session', // Login API
-  '/api/auth/logout',  // Logout API
-  '/api/auth/check',   // Auth check API
+];
+
+// API routes that should bypass proxy completely
+const PUBLIC_API_ROUTES = [
+  '/api/auth/session',
+  '/api/auth/logout',
+  '/api/auth/check',
 ];
 
 // Routes that are only accessible when NOT authenticated
@@ -21,25 +25,33 @@ const GUEST_ONLY_ROUTES = [
 const ADMIN_ROUTES = '/admin';
 const EMPLOYEE_ROUTES = '/learning';
 
-export function middleware(request: NextRequest) {
+// ✅ RENAMED: middleware → proxy
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  
+  // ============================================
+  // 0. BYPASS PROXY FOR API ROUTES (CRITICAL!)
+  // ============================================
+  if (PUBLIC_API_ROUTES.some(route => pathname.startsWith(route))) {
+    console.log('[PROXY] Bypassing:', pathname);
+    return NextResponse.next();
+  }
   
   // Get authentication cookies
   const authToken = request.cookies.get('auth_token')?.value;
   const userRole = request.cookies.get('user_role')?.value;
   
-  const isPublicRoute = PUBLIC_ROUTES.some(route => 
-    pathname === route || pathname.startsWith(route)
-  );
+  console.log('[PROXY] Path:', pathname, 'Auth:', !!authToken, 'Role:', userRole);
+  
+  const isPublicRoute = PUBLIC_ROUTES.includes(pathname);
   const isGuestOnlyRoute = GUEST_ONLY_ROUTES.includes(pathname);
   const isAdminRoute = pathname.startsWith(ADMIN_ROUTES);
   const isEmployeeRoute = pathname.startsWith(EMPLOYEE_ROUTES);
 
   // ============================================
-  // 1. ALLOW PUBLIC API ROUTES
+  // 1. HANDLE PUBLIC ROUTES
   // ============================================
   if (isPublicRoute) {
-    // For guest-only routes (login, forgot-password), redirect if already authenticated
     if (isGuestOnlyRoute && authToken) {
       return redirectBasedOnRole(userRole, request.url);
     }
@@ -80,21 +92,15 @@ export function middleware(request: NextRequest) {
   return NextResponse.next();
 }
 
-/**
- * Redirect user to login page with return URL
- */
 function redirectToLogin(originalUrl: string, currentPath: string) {
   const loginUrl = new URL('/login', originalUrl);
-  // Only set redirect for non-API routes
   if (!currentPath.startsWith('/api/')) {
     loginUrl.searchParams.set('redirect', currentPath);
   }
+  console.log('[PROXY] Redirecting to login');
   return NextResponse.redirect(loginUrl);
 }
 
-/**
- * Redirect user based on their role
- */
 function redirectBasedOnRole(role: string | undefined, originalUrl: string) {
   if (role === 'admin') {
     return NextResponse.redirect(new URL('/admin/dashboard', originalUrl));
@@ -103,19 +109,8 @@ function redirectBasedOnRole(role: string | undefined, originalUrl: string) {
   }
 }
 
-/**
- * Configure which paths the middleware should run on
- */
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - public folder
-     * - api/auth (auth APIs are handled separately)
-     */
     '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };
