@@ -1,25 +1,35 @@
 // lib/firebase/admin.ts
 import * as admin from 'firebase-admin';
 
-if (!admin.apps.length) {
-  const serviceAccount = {
-    type: process.env.FIREBASE_TYPE,
-    project_id: process.env.FIREBASE_PROJECT_ID,
-    private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
-    private_key: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-    client_email: process.env.FIREBASE_CLIENT_EMAIL,
-    client_id: process.env.FIREBASE_CLIENT_ID,
-    auth_uri: process.env.FIREBASE_AUTH_URI,
-    token_uri: process.env.FIREBASE_TOKEN_URI,
-    auth_provider_x509_cert_url: process.env.FIREBASE_AUTH_PROVIDER_CERT_URL,
-    client_x509_cert_url: process.env.FIREBASE_CLIENT_CERT_URL,
-  };
+let adminAuth: admin.auth.Auth;
+let adminDb: admin.firestore.Firestore;
 
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount as admin.ServiceAccount),
-    databaseURL: `https://${process.env.FIREBASE_PROJECT_ID}.firebaseio.com`
-  });
+try {
+  if (!admin.apps.length) {
+    const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+    
+    if (!process.env.FIREBASE_PROJECT_ID || !process.env.FIREBASE_CLIENT_EMAIL || !privateKey) {
+      throw new Error('Firebase Admin Env Variables are missing. Check .env.local');
+    }
+
+    admin.initializeApp({
+      credential: admin.credential.cert({
+        projectId: process.env.FIREBASE_PROJECT_ID,
+        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+        privateKey: privateKey,
+      }),
+      databaseURL: `https://${process.env.FIREBASE_PROJECT_ID}.firebaseio.com`
+    });
+    
+    console.log('[FIREBASE ADMIN] Initialized successfully');
+  }
+
+  adminAuth = admin.auth();
+  adminDb = admin.firestore();
+
+} catch (error) {
+  console.error('[FIREBASE ADMIN ERROR] Initialization failed:', error);
+  // Biarkan undefined agar API route yang memakainya bisa handle errornya
 }
 
-export const adminAuth = admin.auth();
-export const adminDb = admin.firestore();
+export { adminAuth, adminDb };
