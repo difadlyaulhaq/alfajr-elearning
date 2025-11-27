@@ -111,18 +111,16 @@ const LoginPage = () => {
 
       <div className="relative w-full max-w-md">
         {/* Logo & Brand */}
-// Ganti bagian logo dengan ini:
+  
         <div className="text-center mb-8">
-        <div className="inline-flex items-center justify-center w-28 h-28 bg-white/10 backdrop-blur-sm rounded-3xl mb-6 p-4 border-2 border-[#C5A059]/30">
+        <div className="inline-flex items-center justify-center w-100 h-28 bg-white backdrop-blur-sm rounded-3xl mb-6 p-4 border-2 border-[#C5A059]/30">
             <img 
             src="/logo-alfajr.png" 
             alt="Alfajr Umroh Logo" 
             className="w-full h-full object-contain"
             />
         </div>
-        <h1 className="text-3xl font-bold text-white mb-2">Alfajr Umroh</h1>
-        <p className="text-[#C5A059] font-semibold text-lg">Learning Management System</p>
-        <p className="text-gray-400 text-sm mt-2">Admin Panel</p>
+        <h1 className="text-3xl font-bold text-white mb-2">Alfajr E-learning</h1>
         </div>
 
         {/* Login Card */}
