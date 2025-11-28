@@ -1,7 +1,7 @@
 // components/admin/Sidebar.tsx
 import React, { useState } from 'react';
 import { Home, Users, FolderTree, BookOpen, FileQuestion, BarChart3, Settings, LogOut, ChevronDown, ChevronRight, Loader } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 
 interface MenuItem {
   key: string;
@@ -20,10 +20,10 @@ interface SubMenuItem {
 }
 
 const AdminSidebar = () => {
-  const [activeMenu, setActiveMenu] = useState<string>('dashboard');
+  const router = useRouter();
+  const pathname = usePathname();
   const [expandedMenus, setExpandedMenus] = useState<Record<string, boolean>>({});
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const router = useRouter();
 
   const toggleSubmenu = (key: string) => {
     setExpandedMenus(prev => ({
@@ -32,85 +32,69 @@ const AdminSidebar = () => {
     }));
   };
 
+  const isActive = (path?: string) => {
+    if (!path) return false;
+    return pathname === path || pathname.startsWith(`${path}/`);
+  };
+
+  // 🔥 Helper function untuk hapus cookie di client side
+  const deleteCookie = (name: string) => {
+    // Hapus dengan berbagai kombinasi path dan domain
+    const paths = ['/', '/admin', '/learning'];
+    const domains = [window.location.hostname, `.${window.location.hostname}`];
+    
+    paths.forEach(path => {
+      domains.forEach(domain => {
+        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=${path}; domain=${domain}`;
+        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=${path}`;
+      });
+    });
+    
+    // Fallback: hapus tanpa domain
+    document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/`;
+  };
+
   const handleLogout = async () => {
-  setIsLoggingOut(true);
-  
-  try {
-    console.log('[CLIENT] 🚀 Starting logout...');
+    if (isLoggingOut) return;
     
-    // Step 1: Call logout API
-    const response = await fetch('/api/auth/logout', { 
-      method: 'POST',
-      credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json',
+    setIsLoggingOut(true);
+    
+    try {
+      // 1. Panggil API Logout
+      const response = await fetch('/api/auth/logout', { 
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include' // Pastikan cookie dikirim
+      });
+
+      // 2. Hapus cookie secara manual di client (backup method)
+      deleteCookie('auth_token');
+      deleteCookie('user_role');
+      
+      // 3. Hapus localStorage dan sessionStorage
+      localStorage.clear();
+      sessionStorage.clear();
+
+      if (response.ok) {
+        console.log('[LOGOUT] Server logout successful');
+      } else {
+        console.warn('[LOGOUT] Server logout failed, but proceeding with client cleanup');
       }
-    });
-    
-    console.log('[CLIENT] Logout API status:', response.status);
-    
-    // Check response body
-    const data = await response.json();
-    console.log('[CLIENT] Logout API response:', data);
-    
-    if (!response.ok) {
-      throw new Error(`Logout failed: ${response.status}`);
-    }
-    
-    // Step 2: Clear ALL storage
-    console.log('[CLIENT] Clearing storage...');
-    localStorage.clear();
-    sessionStorage.clear();
-    
-    // Step 3: Clear ALL cookies (aggressive)
-    console.log('[CLIENT] Clearing cookies...');
-    const cookies = document.cookie.split(';');
-    
-    for (let cookie of cookies) {
-      const eqPos = cookie.indexOf('=');
-      const name = eqPos > -1 ? cookie.substring(0, eqPos).trim() : cookie.trim();
       
-      // Clear dengan berbagai kombinasi
-      document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
-      document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${window.location.hostname};`;
-      document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; secure;`;
-      
-      console.log(`[CLIENT] Cleared cookie: ${name}`);
-    }
-    
-    // Step 4: Wait a bit for cookies to clear
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    console.log('[CLIENT] ✅ Logout complete, redirecting...');
-    
-    // Step 5: Hard redirect (force reload)
-    window.location.href = '/login';
-    
-  } catch (error) {
-    console.error('[CLIENT] ❌ Logout error:', error);
-    
-    // Fallback: Nuclear option
-    console.log('[CLIENT] Using fallback logout method...');
-    
-    // Clear everything
-    localStorage.clear();
-    sessionStorage.clear();
-    
-    // Clear all cookies aggressively
-    document.cookie.split(';').forEach(cookie => {
-      const name = cookie.split('=')[0].trim();
-      document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
-    });
-    
-    // Force redirect
-    setTimeout(() => {
+      // 4. Redirect dengan force reload
       window.location.href = '/login';
-    }, 100);
-    
-  } finally {
-    setIsLoggingOut(false);
-  }
-};
+      
+    } catch (error) {
+      console.error('[LOGOUT] Error:', error);
+      
+      // Tetap hapus cookie dan redirect meskipun ada error
+      deleteCookie('auth_token');
+      deleteCookie('user_role');
+      localStorage.clear();
+      sessionStorage.clear();
+      window.location.href = '/login';
+    }
+  };
 
   const menuItems: MenuItem[] = [
     {
@@ -163,7 +147,7 @@ const AdminSidebar = () => {
   ];
 
   return (
-    <div className="w-64 h-screen bg-black text-white flex flex-col fixed left-0 top-0">
+    <div className="w-64 h-screen bg-black text-white flex flex-col fixed left-0 top-0 z-40">
       {/* Logo Section */}
       <div className="p-6 border-b border-gray-800">
         <div className="flex items-center space-x-3">
@@ -178,33 +162,30 @@ const AdminSidebar = () => {
       </div>
 
       {/* Menu Items */}
-      <nav className="flex-1 overflow-y-auto py-4">
+      <nav className="flex-1 overflow-y-auto py-4 custom-scrollbar">
         {menuItems.map((item) => (
           <div key={item.key}>
             <button
               onClick={() => {
                 if (item.hasSubmenu) {
                   toggleSubmenu(item.key);
-                } else {
-                  setActiveMenu(item.key);
-                  if (item.path) {
-                    router.push(item.path);
-                  }
+                } else if (item.path) {
+                  router.push(item.path);
                 }
               }}
-              className={`w-full flex items-center justify-between px-6 py-3 text-left transition-all ${
-                activeMenu === item.key
-                  ? 'bg-[#C5A059] text-black'
-                  : 'text-gray-300 hover:bg-gray-900 hover:text-white'
+              className={`w-full flex items-center justify-between px-6 py-3 text-left transition-all hover:bg-gray-900 ${
+                isActive(item.path)
+                  ? 'bg-[#C5A059] text-black hover:bg-[#B08F4A]'
+                  : 'text-gray-300'
               }`}
             >
               <div className="flex items-center space-x-3">
-                <item.icon size={20} className={activeMenu === item.key ? 'text-black' : 'text-[#C5A059]'} />
+                <item.icon size={20} className={isActive(item.path) ? 'text-black' : 'text-[#C5A059]'} />
                 <span className="font-medium">{item.label}</span>
               </div>
               <div className="flex items-center space-x-2">
                 {item.badge && (
-                  <span className="text-xs bg-gray-800 text-[#C5A059] px-2 py-1 rounded">
+                  <span className="text-[10px] bg-gray-800 text-[#C5A059] px-2 py-0.5 rounded border border-gray-700">
                     {item.badge}
                   </span>
                 )}
@@ -216,18 +197,15 @@ const AdminSidebar = () => {
 
             {/* Submenu */}
             {item.hasSubmenu && expandedMenus[item.key] && (
-              <div className="bg-gray-900">
+              <div className="bg-gray-900/50 border-l-2 border-[#C5A059]/20 ml-6 my-1">
                 {item.subItems?.map((subItem) => (
                   <button
                     key={subItem.key}
-                    onClick={() => {
-                      setActiveMenu(subItem.key);
-                      router.push(subItem.path);
-                    }}
-                    className={`w-full flex items-center px-6 pl-14 py-2.5 text-left text-sm transition-all ${
-                      activeMenu === subItem.key
-                        ? 'bg-[#C5A059] text-black'
-                        : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+                    onClick={() => router.push(subItem.path)}
+                    className={`w-full flex items-center px-4 py-2 text-left text-sm transition-all hover:text-white ${
+                      isActive(subItem.path)
+                        ? 'text-[#C5A059] font-semibold'
+                        : 'text-gray-400'
                     }`}
                   >
                     {subItem.label}
@@ -244,15 +222,15 @@ const AdminSidebar = () => {
         <button 
           onClick={handleLogout}
           disabled={isLoggingOut}
-          className="w-full flex items-center justify-center space-x-3 px-4 py-3 text-gray-300 hover:bg-red-900 hover:text-white rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full flex items-center justify-center space-x-3 px-4 py-3 text-gray-300 hover:bg-red-900/20 hover:text-red-400 rounded-lg transition-all group disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isLoggingOut ? (
             <Loader className="animate-spin" size={20} />
           ) : (
-            <LogOut size={20} />
+            <LogOut size={20} className="group-hover:stroke-red-400" />
           )}
           <span className="font-medium">
-            {isLoggingOut ? 'Logging out...' : 'Logout'}
+            {isLoggingOut ? 'Keluar...' : 'Logout'}
           </span>
         </button>
       </div>

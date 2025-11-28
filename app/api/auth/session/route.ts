@@ -18,19 +18,23 @@ export async function POST(request: NextRequest) {
       message: 'Login berhasil'
     });
 
-    // CRITICAL: Set cookies dengan config yang konsisten
+    // ⚠️ CRITICAL: These settings MUST be EXACTLY the same in logout route
+    const isProduction = process.env.NODE_ENV === 'production';
+    
     const cookieOptions = {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: isProduction, // false in development
       sameSite: 'lax' as const,
-      path: '/', // PENTING: Path harus /
+      path: '/',
       maxAge: 60 * 60 * 24 * 7 // 7 days
     };
 
     response.cookies.set('auth_token', token, cookieOptions);
-    response.cookies.set('user_role', 'admin', cookieOptions); // For demo
+    response.cookies.set('user_role', 'admin', cookieOptions);
 
     console.log('[SESSION] Cookies set successfully');
+    console.log('[SESSION] Environment:', process.env.NODE_ENV);
+    console.log('[SESSION] Cookie options:', cookieOptions);
 
     return response;
 
