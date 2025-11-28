@@ -14,6 +14,12 @@ interface User {
   status: 'active' | 'inactive';
 }
 
+// Definisikan tipe data Division
+interface Division {
+  id: string;
+  name: string;
+}
+
 // --- KOMPONEN MODAL DIPINDAHKAN KELUAR (FIX BUG FOKUS) ---
 interface UserFormModalProps {
   isOpen: boolean;
@@ -23,9 +29,10 @@ interface UserFormModalProps {
   setFormData: (data: any) => void;
   isSubmitting: boolean;
   isEditing: boolean;
+  divisions: Division[]; // Tambahkan prop divisions
 }
 
-const UserFormModal = ({ isOpen, onClose, onSubmit, formData, setFormData, isSubmitting, isEditing }: UserFormModalProps) => {
+const UserFormModal = ({ isOpen, onClose, onSubmit, formData, setFormData, isSubmitting, isEditing, divisions }: UserFormModalProps) => {
   if (!isOpen) return null;
 
   return (
@@ -81,15 +88,24 @@ const UserFormModal = ({ isOpen, onClose, onSubmit, formData, setFormData, isSub
                 required
                 value={formData.division}
                 onChange={(e) => setFormData({...formData, division: e.target.value})}
-                className="w-full text-black  px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#C5A059]/50 focus:border-[#C5A059] outline-none transition-all bg-white"
+                className="w-full text-black px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#C5A059]/50 focus:border-[#C5A059] outline-none transition-all bg-white"
               >
                 <option value="">Pilih Divisi</option>
-                <option value="Marketing">Marketing</option>
-                <option value="Finance">Finance</option>
-                <option value="Operasional">Operasional</option>
-                <option value="HR">Human Resources</option>
-                <option value="IT">IT & Tech</option>
+                {divisions.length === 0 ? (
+                  <option value="" disabled>Loading divisi...</option>
+                ) : (
+                  divisions.map((div) => (
+                    <option key={div.id} value={div.name}>
+                      {div.name}
+                    </option>
+                  ))
+                )}
               </select>
+              {divisions.length === 0 && (
+                <p className="text-xs text-amber-600 mt-1">
+                  ⚠️ Belum ada divisi. Silakan buat divisi terlebih dahulu di menu Master Data.
+                </p>
+              )}
             </div>
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1.5">Role</label>
@@ -129,7 +145,7 @@ const UserFormModal = ({ isOpen, onClose, onSubmit, formData, setFormData, isSub
             </button>
             <button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || divisions.length === 0}
               className="flex-1 px-4 py-2.5 bg-[#C5A059] text-black rounded-lg hover:bg-[#B08F4A] font-semibold flex justify-center items-center transition-all shadow-md hover:shadow-lg disabled:opacity-70 disabled:cursor-not-allowed"
             >
               {isSubmitting ? (
@@ -151,6 +167,7 @@ const UserFormModal = ({ isOpen, onClose, onSubmit, formData, setFormData, isSub
 // --- KOMPONEN UTAMA ---
 const UserManagement = () => {
   const [users, setUsers] = useState<User[]>([]);
+  const [divisions, setDivisions] = useState<Division[]>([]); // 🔥 State untuk divisions
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -170,9 +187,10 @@ const UserManagement = () => {
   
   const [formData, setFormData] = useState(initialFormState);
 
-  // Fetch Users saat komponen dimuat
+  // Fetch Users dan Divisions saat komponen dimuat
   useEffect(() => {
     fetchUsers();
+    fetchDivisions(); // 🔥 Fetch divisions
   }, []);
 
   const fetchUsers = async () => {
@@ -186,6 +204,20 @@ const UserManagement = () => {
       console.error('Gagal mengambil data users:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // 🔥 Function untuk fetch divisions dari API
+  const fetchDivisions = async () => {
+    try {
+      const response = await fetch('/api/admin/divisions');
+      const data = await response.json();
+      if (data.success) {
+        // Map hanya id dan name untuk dropdown
+        setDivisions(data.data.map((d: any) => ({ id: d.id, name: d.name })));
+      }
+    } catch (error) {
+      console.error('Gagal mengambil data divisi:', error);
     }
   };
 
@@ -321,11 +353,11 @@ const UserManagement = () => {
               className="px-4 text-black py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#C5A059] outline-none cursor-pointer bg-white"
             >
               <option value="all">Semua Divisi</option>
-              <option value="Marketing">Marketing</option>
-              <option value="Finance">Finance</option>
-              <option value="Operasional">Operasional</option>
-              <option value="HR">HR</option>
-              <option value="IT">IT</option>
+              {divisions.map((div) => (
+                <option key={div.id} value={div.name}>
+                  {div.name}
+                </option>
+              ))}
             </select>
           </div>
         </div>
@@ -441,6 +473,7 @@ const UserManagement = () => {
         setFormData={setFormData}
         isSubmitting={isSubmitting}
         isEditing={!!editingId}
+        divisions={divisions} // 🔥 Pass divisions ke modal
       />
     </div>
   );
