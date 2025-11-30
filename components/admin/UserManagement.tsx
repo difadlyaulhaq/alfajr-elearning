@@ -396,7 +396,7 @@ const UserManagement = () => {
                     <tr key={user.id} className="hover:bg-gray-50 transition-colors group">
                       <td className="px-6 py-4">
                         <div className="flex items-center space-x-3">
-                          <div className="w-10 h-10 bg-gradient-to-br from-[#C5A059] to-[#8B7355] rounded-full flex items-center justify-center text-white font-bold shadow-sm">
+                          <div className="w-10 h-10 bg-linear-to-br from-[#C5A059] to-[#8B7355] rounded-full flex items-center justify-center text-white font-bold shadow-sm">
                             {user.name.charAt(0).toUpperCase()}
                           </div>
                           <div>
