@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Edit, Trash2, Eye, Users, Video, FileText, Upload, Link as LinkIcon, Youtube, ExternalLink, X, ChevronDown, ChevronUp, PlayCircle, Clock, AlertCircle, Save } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Eye, Users, Video, FileText, Upload, Link as LinkIcon, Youtube, ExternalLink, X, ChevronDown, ChevronUp, PlayCircle, Clock, AlertCircle, Save, BookText, Droplets } from 'lucide-react';
 
 // --- Tipe Data ---
 interface Category {
@@ -17,9 +17,10 @@ interface Attachment {
 interface Lesson {
   id: string;
   title: string;
-  type: 'video' | 'document';
+  contentType: 'video' | 'youtube' | 'text';
   sourceType: 'embed' | 'drive';
   url: string;
+  textContent: string; // Untuk tipe 'text'
   duration: string;
   watermark: boolean;
   forceComplete: boolean;
@@ -37,8 +38,10 @@ interface Course {
   title: string;
   categoryId: string;
   categoryName: string;
+  level: 'basic' | 'intermediate' | 'advanced';
   description: string;
   coverImage: string;
+  thumbnail?: string; // Thumbnail video
   status: 'active' | 'draft';
   sections: Section[];
   totalVideos: number;
@@ -65,18 +68,22 @@ const CourseManagement = () => {
   const [formData, setFormData] = useState<Partial<Course>>({
     title: '',
     categoryId: '',
+    level: 'basic',
     description: '',
     coverImage: '',
+    thumbnail: '',
     status: 'draft',
     sections: []
   });
 
   // State Sementara untuk Form Lesson
-  const [activeSectionId, setActiveSectionId] = useState<string | null>(null); // Untuk tahu lesson ditambahkan ke section mana
+  const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
   const [tempLesson, setTempLesson] = useState<Partial<Lesson>>({
     title: '',
+    contentType: 'youtube',
     sourceType: 'embed',
     url: '',
+    textContent: '',
     duration: '',
     watermark: true,
     forceComplete: true,
@@ -119,9 +126,9 @@ const CourseManagement = () => {
 
   const resetForm = () => {
     setFormData({
-      title: '', categoryId: '', description: '', coverImage: '', status: 'draft', sections: []
+      title: '', categoryId: '', level: 'basic', description: '', coverImage: '', thumbnail: '', status: 'draft', sections: []
     });
-    setTempLesson({ title: '', sourceType: 'embed', url: '', duration: '', watermark: true, forceComplete: true, attachments: [] });
+    setTempLesson({ title: '', contentType: 'youtube', sourceType: 'embed', url: '', textContent: '', duration: '', watermark: true, forceComplete: true, attachments: [] });
     setCurrentStep(1);
     setIsEditing(false);
     setEditId(null);
@@ -167,6 +174,23 @@ const CourseManagement = () => {
       alert('Judul dan Kategori wajib diisi');
       return;
     }
+    
+    // Auto-generate thumbnail from the first YouTube video
+    let videoThumbnail = '';
+    const firstSection = formData.sections?.[0];
+    const firstLesson = firstSection?.lessons[0];
+
+    if (firstLesson && firstLesson.contentType === 'youtube' && firstLesson.url) {
+      const videoId = getYouTubeId(firstLesson.url);
+      if (videoId) {
+        videoThumbnail = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+      }
+    }
+
+    const finalFormData = {
+      ...formData,
+      thumbnail: videoThumbnail || formData.coverImage,
+    };
 
     try {
       const url = isEditing ? `/api/admin/courses/${editId}` : '/api/admin/courses';
@@ -175,7 +199,7 @@ const CourseManagement = () => {
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(finalFormData)
       });
 
       const result = await res.json();
@@ -214,15 +238,22 @@ const CourseManagement = () => {
   };
 
   const saveLessonToSection = (sectionId: string) => {
-    if (!tempLesson.title || !tempLesson.url) {
-      alert('Judul materi dan URL wajib diisi');
+    if (!tempLesson.title) {
+      alert('Judul materi wajib diisi');
+      return;
+    }
+    if ((tempLesson.contentType === 'youtube' || tempLesson.contentType === 'video') && !tempLesson.url) {
+      alert('URL materi wajib diisi');
+      return;
+    }
+     if (tempLesson.contentType === 'text' && !tempLesson.textContent) {
+      alert('Konten artikel wajib diisi');
       return;
     }
 
     const newLesson: Lesson = {
       ...tempLesson as Lesson,
       id: Date.now().toString(),
-      type: 'video'
     };
 
     const newSections = (formData.sections || []).map(section => {
@@ -234,7 +265,7 @@ const CourseManagement = () => {
 
     setFormData(prev => ({ ...prev, sections: newSections }));
     // Reset temp lesson
-    setTempLesson({ title: '', sourceType: 'embed', url: '', duration: '', watermark: true, forceComplete: true, attachments: [] });
+    setTempLesson({ title: '', contentType: 'youtube', sourceType: 'embed', url: '', textContent: '', duration: '', watermark: true, forceComplete: true, attachments: [] });
     setActiveSectionId(null);
   };
 
@@ -275,8 +306,8 @@ const CourseManagement = () => {
             {courses.map((course) => (
               <div key={course.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow group">
                 <div className="h-48 bg-gray-200 relative">
-                  {course.coverImage ? (
-                    <img src={course.coverImage} alt={course.title} className="w-full h-full object-cover" />
+                  {(course.thumbnail || course.coverImage) ? (
+                    <img src={course.thumbnail || course.coverImage} alt={course.title} className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#C5A059] to-[#8B7355] text-white text-4xl">
                       📚
@@ -292,7 +323,7 @@ const CourseManagement = () => {
                 <div className="p-5">
                   <h3 className="font-bold text-lg text-black mb-2 line-clamp-1" title={course.title}>{course.title}</h3>
                   <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
-                    <span className="flex items-center"><Video size={14} className="mr-1"/> {course.totalVideos || course.sections?.reduce((acc, s) => acc + s.lessons.length, 0) || 0} Video</span>
+                    <span className="flex items-center"><Video size={14} className="mr-1"/> {course.totalVideos || course.sections?.reduce((acc, s) => acc + s.lessons.length, 0) || 0} Materi</span>
                     <span className="flex items-center"><Users size={14} className="mr-1"/> {course.totalStudents} Peserta</span>
                   </div>
                   <div className="flex gap-2">
@@ -350,8 +381,8 @@ const CourseManagement = () => {
             {/* Content */}
             <div className="flex-1 overflow-y-auto p-8">
               {currentStep === 1 ? (
-                <div className="max-w-2xl mx-auto space-y-5">
-                  <div>
+                <div className="max-w-2xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
+                  <div className="md:col-span-2">
                     <label className="block text-sm font-semibold text-gray-700 mb-2">Judul Kursus</label>
                     <input 
                       type="text" 
@@ -372,7 +403,19 @@ const CourseManagement = () => {
                       {categories.map(cat => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
                     </select>
                   </div>
-                  <div>
+                   <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Level</label>
+                    <select 
+                      value={formData.level}
+                      onChange={e => setFormData({...formData, level: e.target.value as any})}
+                      className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#C5A059] outline-none text-black bg-white"
+                    >
+                      <option value="basic">Basic</option>
+                      <option value="intermediate">Intermediate</option>
+                      <option value="advanced">Advanced</option>
+                    </select>
+                  </div>
+                  <div className="md:col-span-2">
                     <label className="block text-sm font-semibold text-gray-700 mb-2">Deskripsi</label>
                     <textarea 
                       rows={4}
@@ -381,7 +424,7 @@ const CourseManagement = () => {
                       className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#C5A059] outline-none text-black"
                     />
                   </div>
-                  <div>
+                  <div className="md:col-span-2">
                     <label className="block text-sm font-semibold text-gray-700 mb-2">Cover Image (URL)</label>
                     <input 
                       type="text" 
@@ -391,7 +434,7 @@ const CourseManagement = () => {
                       placeholder="https://..."
                     />
                   </div>
-                  <div>
+                  <div className="md:col-span-2">
                     <label className="block text-sm font-semibold text-gray-700 mb-2">Status</label>
                     <div className="flex space-x-4">
                       <label className="flex items-center space-x-2 cursor-pointer">
@@ -427,13 +470,15 @@ const CourseManagement = () => {
                       <div className="p-4 space-y-3">
                         {section.lessons.map((lesson) => (
                           <div key={lesson.id} className="flex items-start p-3 bg-gray-50 rounded border">
-                            <div className="w-10 h-10 bg-[#C5A059]/10 text-[#C5A059] flex items-center justify-center rounded mr-3">
-                              <Video size={20} />
+                             <div className="w-10 h-10 bg-[#C5A059]/10 text-[#C5A059] flex items-center justify-center rounded mr-3">
+                              {lesson.contentType === 'youtube' && <Youtube size={20} />}
+                              {lesson.contentType === 'video' && <Video size={20} />}
+                              {lesson.contentType === 'text' && <BookText size={20} />}
                             </div>
                             <div className="flex-1">
                               <h4 className="font-bold text-black text-sm">{lesson.title}</h4>
                               <div className="text-xs text-gray-500 flex gap-2 mt-1">
-                                <span>{lesson.duration} menit</span> • <span>{lesson.sourceType}</span>
+                                <span>{lesson.duration} menit</span> • <span className="capitalize">{lesson.contentType}</span>
                               </div>
                             </div>
                           </div>
@@ -442,34 +487,45 @@ const CourseManagement = () => {
                         {/* Add Lesson Area */}
                         {activeSectionId === section.id ? (
                           <div className="border-2 border-dashed border-[#C5A059] rounded-lg p-4 bg-[#FFF8E7]/30 mt-4">
-                            <h4 className="font-bold text-gray-800 mb-3 text-sm">Tambah Materi Video</h4>
-                            <div className="grid grid-cols-2 gap-3 mb-3">
+                            <h4 className="font-bold text-gray-800 mb-3 text-sm">Tambah Materi</h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
                               <input 
-                                type="text" placeholder="Judul Video" className="border p-2 rounded text-sm text-black"
+                                type="text" placeholder="Judul Materi" className="border p-2 rounded text-sm text-black"
                                 value={tempLesson.title} onChange={e => setTempLesson({...tempLesson, title: e.target.value})}
                               />
-                              <input 
-                                type="text" placeholder="Durasi (menit)" className="border p-2 rounded text-sm text-black"
-                                value={tempLesson.duration} onChange={e => setTempLesson({...tempLesson, duration: e.target.value})}
-                              />
-                            </div>
-                            <div className="flex gap-2 mb-3">
-                              <select 
+                               <select 
                                 className="border p-2 rounded text-sm bg-white text-black"
-                                value={tempLesson.sourceType} onChange={e => setTempLesson({...tempLesson, sourceType: e.target.value as any})}
+                                value={tempLesson.contentType} onChange={e => setTempLesson({...tempLesson, contentType: e.target.value as any})}
                               >
-                                <option value="embed">YouTube (Embed)</option>
-                                <option value="drive">Google Drive</option>
+                                <option value="youtube">Link Youtube</option>
+                                <option value="video">Link Video (GDrive)</option>
+                                <option value="text">Artikel Teks</option>
                               </select>
-                              <input 
-                                type="text" placeholder="URL Video" className="border p-2 rounded text-sm flex-1 text-black"
-                                value={tempLesson.url} onChange={e => setTempLesson({...tempLesson, url: e.target.value})}
-                              />
                             </div>
                             
+                            {/* Conditional Inputs */}
+                            { (tempLesson.contentType === 'youtube' || tempLesson.contentType === 'video') &&
+                              <div className="grid grid-cols-2 gap-3 mb-3">
+                                 <input 
+                                  type="text" placeholder="Durasi (menit)" className="border p-2 rounded text-sm text-black"
+                                  value={tempLesson.duration} onChange={e => setTempLesson({...tempLesson, duration: e.target.value})}
+                                />
+                                <input 
+                                  type="text" placeholder="URL Video" className="border p-2 rounded text-sm flex-1 text-black"
+                                  value={tempLesson.url} onChange={e => setTempLesson({...tempLesson, url: e.target.value})}
+                                />
+                              </div>
+                            }
+                            { tempLesson.contentType === 'text' &&
+                              <textarea 
+                                placeholder="Tulis artikel di sini..." rows={5} className="border p-2 rounded text-sm w-full text-black"
+                                value={tempLesson.textContent} onChange={e => setTempLesson({...tempLesson, textContent: e.target.value})}
+                              />
+                            }
+                            
                             {/* Attachments */}
-                            <div className="mb-3">
-                              <label className="text-xs font-bold text-gray-600 block mb-1">Lampiran (File Pendukung)</label>
+                            <div className="my-3">
+                              <label className="text-xs font-bold text-gray-600 block mb-1">Lampiran (Opsional)</label>
                               {tempLesson.attachments?.map((att, i) => (
                                 <div key={i} className="flex items-center text-xs bg-white border p-1 rounded mb-1 w-fit">
                                   <LinkIcon size={12} className="mr-1"/> {att.name}
@@ -576,7 +632,9 @@ const CourseManagement = () => {
                             {section.lessons.map((lesson, lIdx) => (
                               <div key={lIdx} className="p-4 flex items-center hover:bg-gray-50 transition-colors cursor-default">
                                 <div className="w-8 h-8 rounded-full bg-[#C5A059]/10 text-[#C5A059] flex items-center justify-center mr-4 shrink-0">
-                                  {lesson.type === 'video' ? <PlayCircle size={16} /> : <FileText size={16} />}
+                                  {lesson.contentType === 'youtube' ? <Youtube size={16} /> : 
+                                   lesson.contentType === 'video' ? <Video size={16} /> :
+                                   <BookText size={16} />}
                                 </div>
                                 <div className="flex-1">
                                   <p className="text-sm font-medium text-black">{lesson.title}</p>
@@ -599,9 +657,13 @@ const CourseManagement = () => {
 
                 {/* Sidebar Info */}
                 <div className="space-y-6">
-                  <div className="bg-white p-6 rounded-xl border shadow-sm">
-                    <h4 className="font-bold text-gray-800 mb-4">Statistik Kursus</h4>
+                   <div className="bg-white p-6 rounded-xl border shadow-sm">
+                    <h4 className="font-bold text-gray-800 mb-4">Informasi Kursus</h4>
                     <div className="space-y-3">
+                       <div className="flex justify-between text-sm">
+                        <span className="text-gray-500 flex items-center"><Droplets size={14} className="mr-2"/>Level</span>
+                        <span className="font-medium text-black capitalize">{previewData.level}</span>
+                      </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-500">Total Video</span>
                         <span className="font-medium text-black">{previewData.totalVideos} Video</span>
