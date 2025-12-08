@@ -121,7 +121,7 @@ const LoginPage = () => {
           </div>
           <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">Alfajr E-learning</h1>
           <p className="text-[#C5A059] font-semibold text-sm sm:text-lg hidden sm:block">Learning Management System</p>
-          <p className="text-gray-400 text-xs sm:text-sm mt-1 sm:mt-2">Admin Panel</p>
+          <p className="text-gray-400 text-xs sm:text-sm mt-1 sm:mt-2">Silahkan Login Dengan Akun Pegawai Alfajr Anda</p>
         </div>
 
         {/* Login Card */}

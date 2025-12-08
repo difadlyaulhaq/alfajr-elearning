@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { Home, Users, FolderTree, BookOpen, FileQuestion, BarChart3, Settings, LogOut, ChevronDown, ChevronRight, Loader } from 'lucide-react';
 import { useRouter, usePathname } from 'next/navigation';
+import { useAuth } from '@/hooks/useAuth'; // Import useAuth hook
 
 interface MenuItem {
   key: string;
@@ -22,8 +23,8 @@ interface SubMenuItem {
 const AdminSidebar = () => {
   const router = useRouter();
   const pathname = usePathname();
+  const { logout, isLoading: isLoggingOut } = useAuth(); // Use isLoading from useAuth
   const [expandedMenus, setExpandedMenus] = useState<Record<string, boolean>>({});
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const toggleSubmenu = (key: string) => {
     setExpandedMenus(prev => ({
@@ -37,63 +38,8 @@ const AdminSidebar = () => {
     return pathname === path || pathname.startsWith(`${path}/`);
   };
 
-  // 🔥 Helper function untuk hapus cookie di client side
-  const deleteCookie = (name: string) => {
-    // Hapus dengan berbagai kombinasi path dan domain
-    const paths = ['/', '/admin', '/learning'];
-    const domains = [window.location.hostname, `.${window.location.hostname}`];
-    
-    paths.forEach(path => {
-      domains.forEach(domain => {
-        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=${path}; domain=${domain}`;
-        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=${path}`;
-      });
-    });
-    
-    // Fallback: hapus tanpa domain
-    document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/`;
-  };
-
   const handleLogout = async () => {
-    if (isLoggingOut) return;
-    
-    setIsLoggingOut(true);
-    
-    try {
-      // 1. Panggil API Logout
-      const response = await fetch('/api/auth/logout', { 
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include' // Pastikan cookie dikirim
-      });
-
-      // 2. Hapus cookie secara manual di client (backup method)
-      deleteCookie('auth_token');
-      deleteCookie('user_role');
-      
-      // 3. Hapus localStorage dan sessionStorage
-      localStorage.clear();
-      sessionStorage.clear();
-
-      if (response.ok) {
-        console.log('[LOGOUT] Server logout successful');
-      } else {
-        console.warn('[LOGOUT] Server logout failed, but proceeding with client cleanup');
-      }
-      
-      // 4. Redirect dengan force reload
-      window.location.href = '/login';
-      
-    } catch (error) {
-      console.error('[LOGOUT] Error:', error);
-      
-      // Tetap hapus cookie dan redirect meskipun ada error
-      deleteCookie('auth_token');
-      deleteCookie('user_role');
-      localStorage.clear();
-      sessionStorage.clear();
-      window.location.href = '/login';
-    }
+    await logout(); // Call the logout function from useAuth
   };
 
   const menuItems: MenuItem[] = [
@@ -152,7 +98,13 @@ const AdminSidebar = () => {
       <div className="p-6 border-b border-gray-800">
         <div className="flex items-center space-x-3">
           <div className="w-10 h-10 bg-gradient-to-br from-[#C5A059] to-[#8B7355] rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold text-lg">A</span>
+            <span className="text-white font-bold text-lg">
+              <img
+                src="/logo-alfajr.png"
+                alt="Logo Alfajr"
+                className="w-8 h-8"
+              />
+            </span>
           </div>
           <div>
             <h1 className="text-lg font-bold text-[#C5A059]">Alfajr Umroh</h1>
