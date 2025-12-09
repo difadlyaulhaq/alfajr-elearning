@@ -1,48 +1,106 @@
 // app/api/auth/session/route.ts
 import { NextRequest, NextResponse } from 'next/server';
+import { adminAuth, adminDb } from '@/lib/firebase/admin';
 
+// GET: Mengambil data sesi pengguna yang sedang login
+export async function GET(request: NextRequest) {
+  try {
+    const token = request.cookies.get('auth_token')?.value;
+
+    if (!token) {
+      return NextResponse.json({ isAuthenticated: false, error: 'Token tidak ditemukan' }, { status: 401 });
+    }
+
+    const decodedToken = await adminAuth.verifyIdToken(token);
+    const { uid } = decodedToken;
+    const userDoc = await adminDb.collection('users').doc(uid).get();
+
+    if (!userDoc.exists) {
+      return NextResponse.json({ isAuthenticated: false, error: 'User tidak ditemukan di database' }, { status: 404 });
+    }
+
+    const user = userDoc.data();
+    return NextResponse.json({ isAuthenticated: true, user });
+
+  } catch (error: any) {
+    if (error.code === 'auth/id-token-expired' || error.code === 'auth/argument-error') {
+      return NextResponse.json({ isAuthenticated: false, error: 'Token tidak valid atau expired' }, { status: 401 });
+    }
+    return NextResponse.json({ isAuthenticated: false, error: 'Internal server error' }, { status: 500 });
+  }
+}
+
+
+// POST: Membuat sesi (login) dan mengembalikan data user
 export async function POST(request: NextRequest) {
   try {
     const { token } = await request.json();
 
     if (!token) {
-      return NextResponse.json(
-        { error: 'Token tidak ditemukan' },
-        { status: 401 }
-      );
+      return NextResponse.json({ success: false, error: 'Token tidak ditemukan' }, { status: 401 });
     }
 
-    // Create response
+    // Verifikasi token untuk mendapatkan info user dari Firebase Auth
+    const decodedToken = await adminAuth.verifyIdToken(token);
+    const { uid, email, name } = decodedToken;
+
+    // Cek apakah user sudah ada di database Firestore
+    const userDocRef = adminDb.collection('users').doc(uid);
+    const userDoc = await userDocRef.get();
+    
+    let userData;
+
+    if (!userDoc.exists) {
+      // Jika user TIDAK ADA di Firestore, buat profil baru (Just-in-Time Provisioning)
+      console.log(`User dengan UID ${uid} tidak ditemukan di Firestore. Membuat profil baru...`);
+      const newUserProfile = {
+        uid,
+        email: email || '',
+        name: name || email?.split('@')[0] || 'Pengguna Baru',
+        role: 'user', // Default role
+        division: 'Unassigned', // Default division
+        status: 'active',
+        createdAt: new Date().toISOString(),
+      };
+      
+      await userDocRef.set(newUserProfile);
+      userData = newUserProfile;
+
+      // Set custom claims untuk role default
+      await adminAuth.setCustomUserClaims(uid, { role: 'user' });
+
+    } else {
+      // Jika user ADA, gunakan data yang ada
+      userData = userDoc.data();
+    }
+
+    // Buat response
     const response = NextResponse.json({ 
       success: true,
-      message: 'Login berhasil'
+      message: 'Login berhasil',
+      user: userData 
     });
 
-    // ⚠️ CRITICAL: These settings MUST be EXACTLY the same in logout route
     const isProduction = process.env.NODE_ENV === 'production';
-    
     const cookieOptions = {
       httpOnly: true,
-      secure: isProduction, // false in development
+      secure: isProduction,
       sameSite: 'lax' as const,
       path: '/',
-      maxAge: 60 * 60 * 24 * 7 // 7 days
+      maxAge: 60 * 60 * 24 * 7 // 7 hari
     };
 
+    // Set kedua cookie yang diperlukan oleh middleware
     response.cookies.set('auth_token', token, cookieOptions);
-    response.cookies.set('user_role', 'admin', cookieOptions);
-
-    console.log('[SESSION] Cookies set successfully');
-    console.log('[SESSION] Environment:', process.env.NODE_ENV);
-    console.log('[SESSION] Cookie options:', cookieOptions);
+    response.cookies.set('user_role', userData?.role || 'user', cookieOptions);
 
     return response;
 
-  } catch (error) {
-    console.error('[SESSION] Error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+  } catch (error: any) {
+    console.error('[SESSION POST ERROR]:', error);
+     if (error.code === 'auth/id-token-expired' || error.code === 'auth/argument-error') {
+      return NextResponse.json({ success: false, error: 'Token tidak valid atau expired' }, { status: 401 });
+    }
+    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }

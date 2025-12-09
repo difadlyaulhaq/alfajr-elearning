@@ -74,7 +74,7 @@ const UserFormModal = ({ isOpen, onClose, onSubmit, formData, setFormData, isSub
               placeholder="nama@alfajrumroh.com"
               value={formData.email}
               onChange={(e) => setFormData({...formData, email: e.target.value})}
-              className={`w-full px-4 py-2.5 border border-gray-300 rounded-lg outline-none transition-all ${
+              className={`w-full text-black px-4 py-2.5 border border-gray-300 rounded-lg outline-none transition-all ${
                 isEditing ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'focus:ring-2 focus:ring-[#C5A059]/50 focus:border-[#C5A059]'
               }`}
             />
