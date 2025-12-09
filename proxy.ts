@@ -81,6 +81,9 @@ export function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
+  /* 
+    NONAKTIFKAN SEMENTARA: Logika ini mengalihkan admin secara paksa dari halaman pegawai.
+    Dinonaktifkan agar admin bisa memilih untuk melihat panel pegawai.
   if (isEmployeeRoute) {
     if (userRole === 'admin') {
       console.log('[PROXY] Admin accessing employee route, redirecting to admin dashboard');
@@ -89,6 +92,7 @@ export function proxy(request: NextRequest) {
     console.log('[PROXY] ✅ Employee access granted');
     return NextResponse.next();
   }
+  */
 
   // ============================================
   // 4. ROOT PATH REDIRECT

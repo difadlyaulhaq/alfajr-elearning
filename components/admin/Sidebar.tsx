@@ -1,6 +1,6 @@
 // components/admin/Sidebar.tsx
 import React, { useState } from 'react';
-import { Home, Users, FolderTree, BookOpen, FileQuestion, BarChart3, Settings, LogOut, ChevronDown, ChevronRight, Loader } from 'lucide-react';
+import { Home, Users, FolderTree, BookOpen, FileQuestion, BarChart3, Settings, LogOut, ChevronDown, ChevronRight, Loader, MonitorPlay } from 'lucide-react'; // Import MonitorPlay
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth'; // Import useAuth hook
 
@@ -89,6 +89,12 @@ const AdminSidebar = () => {
       label: 'Pengaturan Sistem',
       icon: Settings,
       path: '/admin/settings'
+    },
+    { // New item for learning panel
+      key: 'learning-panel',
+      label: 'Lihat sebagai Pegawai',
+      icon: MonitorPlay,
+      path: '/learning/dashboard'
     }
   ];
 
@@ -97,18 +103,17 @@ const AdminSidebar = () => {
       {/* Logo Section */}
       <div className="p-6 border-b border-gray-800">
         <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-[#C5A059] to-[#8B7355] rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold text-lg">
-              <img
-                src="/logo-alfajr.png"
-                alt="Logo Alfajr"
-                className="w-8 h-8"
-              />
-            </span>
+          {/* Ganti w-full h-full dengan ukuran pasti, misal w-10 h-10 atau w-12 h-12 */}
+          <div className="w-12 h-12 bg-gradient-to-br from-[#C5A059] to-[#8B7355] rounded-lg flex items-center justify-center overflow-hidden shrink-0">
+            <img
+              src="/logo-alfajr.png"
+              alt="Logo Alfajr"
+              className="w-full h-full object-contain p-1" 
+            />
           </div>
           <div>
             <h1 className="text-lg font-bold text-[#C5A059]">Alfajr Umroh</h1>
-            <p className="text-xs text-gray-400">Admin Panel</p>
+            <p className="text-xs text-white">Admin Panel</p>
           </div>
         </div>
       </div>
