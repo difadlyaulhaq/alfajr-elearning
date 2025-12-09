@@ -78,6 +78,7 @@ const CourseManagement = () => {
 
   // State Sementara untuk Form Lesson
   const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
+  const [editingLessonId, setEditingLessonId] = useState<string | null>(null);
   const [tempLesson, setTempLesson] = useState<Partial<Lesson>>({
     title: '',
     contentType: 'youtube',
@@ -175,16 +176,34 @@ const CourseManagement = () => {
       return;
     }
     
-    // Auto-generate thumbnail from the first YouTube video
+    // Auto-generate thumbnail from the first YouTube video using the new scraping API
     let videoThumbnail = '';
     const firstSection = formData.sections?.[0];
     const firstLesson = firstSection?.lessons[0];
 
     if (firstLesson && firstLesson.contentType === 'youtube' && firstLesson.url) {
-      const videoId = getYouTubeId(firstLesson.url);
-      if (videoId) {
-        videoThumbnail = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+      try {
+        console.log(`Scraping thumbnail for URL: ${firstLesson.url}`);
+        const scrapeRes = await fetch(`/api/utils/scrape-thumbnail?url=${encodeURIComponent(firstLesson.url)}`);
+        const scrapeData = await scrapeRes.json();
+        if (scrapeData.success) {
+          videoThumbnail = scrapeData.thumbnailUrl;
+          console.log(`Scraping success, thumbnail found: ${videoThumbnail}`);
+        } else {
+          console.warn('Scraping failed, will use fallback method.', scrapeData.error);
+        }
+      } catch (e) {
+        console.error("Thumbnail scraping fetch call failed, will use fallback method.", e);
       }
+    }
+
+    // Fallback to the old method if scraping failed or wasn't applicable
+    if (!videoThumbnail && firstLesson && firstLesson.contentType === 'youtube' && firstLesson.url) {
+        console.log("Using fallback thumbnail method.");
+        const videoId = getYouTubeId(firstLesson.url);
+        if (videoId) {
+            videoThumbnail = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+        }
     }
 
     const finalFormData = {
@@ -237,7 +256,31 @@ const CourseManagement = () => {
     setFormData(prev => ({ ...prev, sections: newSections }));
   };
 
-  const saveLessonToSection = (sectionId: string) => {
+  const handleStartEditLesson = (lesson: Lesson, sectionId: string) => {
+    setActiveSectionId(sectionId);
+    setEditingLessonId(lesson.id);
+    setTempLesson(lesson);
+  };
+
+  const handleCancelEditLesson = () => {
+    setActiveSectionId(null);
+    setEditingLessonId(null);
+    setTempLesson({ title: '', contentType: 'youtube', sourceType: 'embed', url: '', textContent: '', duration: '', watermark: true, forceComplete: true, attachments: [] });
+  };
+
+  const handleDeleteLesson = (lessonId: string, sectionId: string) => {
+    if (!confirm('Anda yakin ingin menghapus materi ini?')) return;
+
+    const newSections = (formData.sections || []).map(section => {
+      if (section.id === sectionId) {
+        return { ...section, lessons: section.lessons.filter(l => l.id !== lessonId) };
+      }
+      return section;
+    });
+    setFormData(prev => ({ ...prev, sections: newSections }));
+  };
+
+  const handleSaveLesson = (sectionId: string) => {
     if (!tempLesson.title) {
       alert('Judul materi wajib diisi');
       return;
@@ -251,22 +294,35 @@ const CourseManagement = () => {
       return;
     }
 
-    const newLesson: Lesson = {
-      ...tempLesson as Lesson,
-      id: Date.now().toString(),
-    };
+    let newSections;
 
-    const newSections = (formData.sections || []).map(section => {
-      if (section.id === sectionId) {
-        return { ...section, lessons: [...section.lessons, newLesson] };
-      }
-      return section;
-    });
+    if (editingLessonId) {
+      // Update existing lesson
+      newSections = (formData.sections || []).map(section => {
+        if (section.id === sectionId) {
+          return {
+            ...section,
+            lessons: section.lessons.map(l => l.id === editingLessonId ? { ...tempLesson as Lesson } : l)
+          };
+        }
+        return section;
+      });
+    } else {
+      // Add new lesson
+      const newLesson: Lesson = {
+        ...tempLesson as Lesson,
+        id: Date.now().toString(),
+      };
+      newSections = (formData.sections || []).map(section => {
+        if (section.id === sectionId) {
+          return { ...section, lessons: [...section.lessons, newLesson] };
+        }
+        return section;
+      });
+    }
 
     setFormData(prev => ({ ...prev, sections: newSections }));
-    // Reset temp lesson
-    setTempLesson({ title: '', contentType: 'youtube', sourceType: 'embed', url: '', textContent: '', duration: '', watermark: true, forceComplete: true, attachments: [] });
-    setActiveSectionId(null);
+    handleCancelEditLesson();
   };
 
   const addAttachmentToTempLesson = () => {
@@ -469,8 +525,8 @@ const CourseManagement = () => {
 
                       <div className="p-4 space-y-3">
                         {section.lessons.map((lesson) => (
-                          <div key={lesson.id} className="flex items-start p-3 bg-gray-50 rounded border">
-                             <div className="w-10 h-10 bg-[#C5A059]/10 text-[#C5A059] flex items-center justify-center rounded mr-3">
+                          <div key={lesson.id} className="flex items-center p-3 bg-gray-100 rounded border group">
+                             <div className="w-10 h-10 bg-[#C5A059]/10 text-[#C5A059] flex items-center justify-center rounded mr-3 shrink-0">
                               {lesson.contentType === 'youtube' && <Youtube size={20} />}
                               {lesson.contentType === 'video' && <Video size={20} />}
                               {lesson.contentType === 'text' && <BookText size={20} />}
@@ -478,16 +534,20 @@ const CourseManagement = () => {
                             <div className="flex-1">
                               <h4 className="font-bold text-black text-sm">{lesson.title}</h4>
                               <div className="text-xs text-gray-500 flex gap-2 mt-1">
-                                <span>{lesson.duration} menit</span> • <span className="capitalize">{lesson.contentType}</span>
+                                <span>{lesson.duration || 'N/A'} menit</span> • <span className="capitalize">{lesson.contentType}</span>
                               </div>
+                            </div>
+                             <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button onClick={() => handleStartEditLesson(lesson, section.id)} className="p-1.5 text-blue-600 hover:bg-blue-100 rounded"><Edit size={16}/></button>
+                              <button onClick={() => handleDeleteLesson(lesson.id, section.id)} className="p-1.5 text-red-600 hover:bg-red-100 rounded"><Trash2 size={16}/></button>
                             </div>
                           </div>
                         ))}
 
-                        {/* Add Lesson Area */}
+                        {/* Add/Edit Lesson Area */}
                         {activeSectionId === section.id ? (
                           <div className="border-2 border-dashed border-[#C5A059] rounded-lg p-4 bg-[#FFF8E7]/30 mt-4">
-                            <h4 className="font-bold text-gray-800 mb-3 text-sm">Tambah Materi</h4>
+                            <h4 className="font-bold text-gray-800 mb-3 text-sm">{editingLessonId ? 'Edit Materi' : 'Tambah Materi'}</h4>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
                               <input 
                                 type="text" placeholder="Judul Materi" className="border p-2 rounded text-sm text-black"
@@ -539,8 +599,8 @@ const CourseManagement = () => {
                             </div>
 
                             <div className="flex gap-2 justify-end">
-                              <button onClick={() => setActiveSectionId(null)} className="px-3 py-1.5 text-xs text-gray-600 border rounded">Batal</button>
-                              <button onClick={() => saveLessonToSection(section.id)} className="px-3 py-1.5 text-xs bg-[#C5A059] text-black rounded font-bold">Simpan Materi</button>
+                              <button onClick={handleCancelEditLesson} className="px-3 py-1.5 text-xs text-gray-600 border rounded">Batal</button>
+                              <button onClick={() => handleSaveLesson(section.id)} className="px-3 py-1.5 text-xs bg-[#C5A059] text-black rounded font-bold">{editingLessonId ? 'Update Materi' : 'Simpan Materi'}</button>
                             </div>
                           </div>
                         ) : (
