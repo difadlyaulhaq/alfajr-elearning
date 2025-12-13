@@ -13,6 +13,7 @@ const PUBLIC_API_ROUTES = [
   '/api/auth/session',
   '/api/auth/logout',
   '/api/auth/check',
+  '/api/admin',
 ];
 
 // Routes that are only accessible when NOT authenticated

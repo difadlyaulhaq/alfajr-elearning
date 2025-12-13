@@ -5,18 +5,19 @@ import { adminDb } from '@/lib/firebase/admin';
 // PATCH: Update kategori
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params;
+    const { id } = await context.params;
     const body = await request.json();
     const { name, description, icon, color, status } = body;
+
+    console.log('[API CATEGORY PATCH] Updating category:', id);
 
     if (!adminDb) {
       throw new Error('Firebase Admin belum siap');
     }
 
-    // Cek apakah kategori ada
     const categoryRef = adminDb.collection('categories').doc(id);
     const categoryDoc = await categoryRef.get();
 
@@ -54,13 +55,15 @@ export async function PATCH(
 
     await categoryRef.update(updateData);
 
+    console.log('[API CATEGORY PATCH] Category updated successfully');
+
     return NextResponse.json({
       success: true,
       message: 'Kategori berhasil diperbarui'
     });
 
   } catch (error: any) {
-    console.error('[PATCH CATEGORY ERROR]:', error);
+    console.error('[API CATEGORY PATCH ERROR]:', error);
     return NextResponse.json(
       { success: false, error: error.message || 'Gagal mengupdate kategori' },
       { status: 500 }
@@ -71,10 +74,12 @@ export async function PATCH(
 // DELETE: Hapus kategori
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params;
+    const { id } = await context.params;
+
+    console.log('[API CATEGORY DELETE] Deleting category:', id);
 
     if (!adminDb) {
       throw new Error('Firebase Admin belum siap');
@@ -108,13 +113,15 @@ export async function DELETE(
 
     await categoryRef.delete();
 
+    console.log('[API CATEGORY DELETE] Category deleted successfully');
+
     return NextResponse.json({
       success: true,
       message: 'Kategori berhasil dihapus'
     });
 
   } catch (error: any) {
-    console.error('[DELETE CATEGORY ERROR]:', error);
+    console.error('[API CATEGORY DELETE ERROR]:', error);
     return NextResponse.json(
       { success: false, error: error.message || 'Gagal menghapus kategori' },
       { status: 500 }

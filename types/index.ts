@@ -12,12 +12,17 @@ export interface Course {
   id: string;
   title: string;
   description: string;
-  category: string;
+  categoryId: string;
+  categoryName: string;
+  level: 'basic' | 'intermediate' | 'advanced';
   coverImage?: string;
+  thumbnail?: string;
   status: 'active' | 'draft';
   createdBy: string;
   createdAt: Date;
   sections: Section[];
+  totalVideos: number;
+  totalStudents: number;
 }
 
 export interface Section {
@@ -27,23 +32,10 @@ export interface Section {
   lessons: Lesson[];
 }
 
-export interface Lesson {
-  id: string;
-  title: string;
-  type: 'video' | 'document';
-  videoUrl?: string;
-  duration?: number;
-  watermark?: boolean;
-  forceComplete?: boolean;
-  attachments?: Attachment[];
-}
 
-export interface Attachment {
+export interface Category {
   id: string;
   name: string;
-  url: string;
-  type: string;
-  size: number;
 }
 
 export interface Progress {
@@ -53,4 +45,22 @@ export interface Progress {
   status: 'not-started' | 'in-progress' | 'completed';
   lastAccess: Date;
   completedAt?: Date;
+}
+export interface Lesson {
+  id: string;
+  title: string;
+  contentType: 'video' | 'youtube' | 'text';
+  sourceType: 'embed' | 'drive';
+  url: string;
+  textContent: string; // Untuk tipe 'text'
+  duration: string;
+  watermark: boolean;
+  forceComplete: boolean;
+  attachments: Attachment[];
+}
+
+export interface Attachment {
+  name: string;
+  url:string;
+  type: 'link';
 }

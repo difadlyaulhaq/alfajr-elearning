@@ -1,58 +1,22 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Plus, Search, Edit, Trash2, Eye, Users, Video, FileText, Upload, Link as LinkIcon, Youtube, ExternalLink, X, ChevronDown, ChevronUp, PlayCircle, Clock, AlertCircle, Save, BookText, Droplets } from 'lucide-react';
 
-// --- Tipe Data ---
-interface Category {
-  id: string;
-  name: string;
+import { Course, Section, Lesson, Attachment, Category } from '@/types';
+
+interface CourseManagementProps {
+  initialCourses: Course[];
+  initialCategories: Category[];
 }
 
-interface Attachment {
-  name: string;
-  url: string;
-  type: 'link';
-}
-
-interface Lesson {
-  id: string;
-  title: string;
-  contentType: 'video' | 'youtube' | 'text';
-  sourceType: 'embed' | 'drive';
-  url: string;
-  textContent: string; // Untuk tipe 'text'
-  duration: string;
-  watermark: boolean;
-  forceComplete: boolean;
-  attachments: Attachment[];
-}
-
-interface Section {
-  id: string;
-  title: string;
-  lessons: Lesson[];
-}
-
-interface Course {
-  id: string;
-  title: string;
-  categoryId: string;
-  categoryName: string;
-  level: 'basic' | 'intermediate' | 'advanced';
-  description: string;
-  coverImage: string;
-  thumbnail?: string; // Thumbnail video
-  status: 'active' | 'draft';
-  sections: Section[];
-  totalVideos: number;
-  totalStudents: number;
-}
-
-const CourseManagement = () => {
+const CourseManagement: React.FC<CourseManagementProps> = ({ initialCourses, initialCategories }) => {
+  const router = useRouter();
+  
   // State Utama
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [courses, setCourses] = useState<Course[]>(initialCourses);
+  const [categories, setCategories] = useState<Category[]>(initialCategories);
+  const [isLoading, setIsLoading] = useState(false); // Only for mutations
   
   // State Modal Form (Add/Edit)
   const [showModal, setShowModal] = useState(false);
@@ -91,31 +55,6 @@ const CourseManagement = () => {
     attachments: []
   });
   const [tempAttachment, setTempAttachment] = useState({ name: '', url: '' });
-
-  // --- Fetch Data ---
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
-    try {
-      setIsLoading(true);
-      const [coursesRes, catRes] = await Promise.all([
-        fetch('/api/admin/courses'),
-        fetch('/api/admin/categories')
-      ]);
-      
-      const coursesData = await coursesRes.json();
-      const catData = await catRes.json();
-
-      if (coursesData.success) setCourses(coursesData.data);
-      if (catData.success) setCategories(catData.data);
-    } catch (error) {
-      console.error('Error fetching data:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   // --- Helper Functions ---
   const getYouTubeId = (url: string) => {
@@ -161,7 +100,7 @@ const CourseManagement = () => {
       const data = await res.json();
       if (data.success) {
         alert('Kursus berhasil dihapus');
-        fetchData();
+        router.refresh(); // Refresh the page to get new data
       } else {
         alert(data.error);
       }
@@ -171,8 +110,10 @@ const CourseManagement = () => {
   };
 
   const handleSaveCourse = async () => {
+    setIsLoading(true);
     if (!formData.title || !formData.categoryId) {
       alert('Judul dan Kategori wajib diisi');
+      setIsLoading(false);
       return;
     }
     
@@ -225,13 +166,15 @@ const CourseManagement = () => {
       if (result.success) {
         alert(`Kursus berhasil ${isEditing ? 'diperbarui' : 'dibuat'}!`);
         setShowModal(false);
-        fetchData();
+        router.refresh(); // Refresh the page to get new data
       } else {
         alert(`Gagal: ${result.error}`);
       }
     } catch (error) {
       console.error('Save error:', error);
       alert('Terjadi kesalahan sistem');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -240,6 +183,7 @@ const CourseManagement = () => {
     const newSection: Section = {
       id: Date.now().toString(),
       title: `Bab ${(formData.sections?.length || 0) + 1}`,
+      order: (formData.sections?.length || 0),
       lessons: []
     };
     setFormData(prev => ({ ...prev, sections: [...(prev.sections || []), newSection] }));
