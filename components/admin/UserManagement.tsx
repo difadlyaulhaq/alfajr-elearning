@@ -315,7 +315,7 @@ const UserManagement = () => {
   });
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA]">
+    <div className="min-h-screen bg-brand-gray">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 px-8 py-6 sticky top-0 z-10">
         <div className="flex items-center justify-between">
@@ -396,13 +396,13 @@ const UserManagement = () => {
                     <tr key={user.id} className="hover:bg-gray-50 transition-colors group">
                       <td className="px-6 py-4">
                         <div className="flex items-center space-x-3">
-                          <div className="w-10 h-10 bg-linear-to-br from-[#C5A059] to-[#8B7355] rounded-full flex items-center justify-center text-white font-bold shadow-sm">
+                          <div className="w-10 h-10 bg-brand-gold rounded-full flex items-center justify-center text-white font-bold shadow-sm">
                             {user.name.charAt(0).toUpperCase()}
                           </div>
                           <div>
                             <p className="font-semibold text-gray-900">{user.name}</p>
                             <span className={`text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wide font-medium ${
-                              user.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600'
+                              user.role === 'admin' ? 'bg-gray-200 text-gray-800' : 'bg-gray-100 text-gray-600'
                             }`}>
                               {user.role}
                             </span>
@@ -424,8 +424,8 @@ const UserManagement = () => {
                       <td className="px-6 py-4">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                           user.status === 'active' 
-                            ? 'bg-green-100 text-green-800' 
-                            : 'bg-red-100 text-red-800'
+                            ? 'bg-brand-success/20 text-brand-success' 
+                            : 'bg-brand-danger/20 text-brand-danger'
                         }`}>
                           {user.status === 'active' ? 'Aktif' : 'Non-aktif'}
                         </span>
@@ -435,7 +435,7 @@ const UserManagement = () => {
                           {/* Tombol Edit */}
                           <button 
                             onClick={() => handleEditClick(user)}
-                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" 
+                            className="p-2 text-brand-gold hover:bg-brand-gold/10 rounded-lg transition-colors" 
                             title="Edit Data"
                           >
                             <Edit size={18} />
@@ -446,8 +446,8 @@ const UserManagement = () => {
                             onClick={() => handleToggleStatus(user.id, user.status)}
                             className={`p-2 rounded-lg transition-colors ${
                               user.status === 'active' 
-                                ? 'text-red-600 hover:bg-red-50' 
-                                : 'text-green-600 hover:bg-green-50'
+                                ? 'text-brand-danger hover:bg-brand-danger/10' 
+                                : 'text-brand-success hover:bg-brand-success/10'
                             }`}
                             title={user.status === 'active' ? "Non-aktifkan (Blokir Akses)" : "Aktifkan Kembali"}
                           >

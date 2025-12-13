@@ -1,8 +1,10 @@
 // components/admin/Sidebar.tsx
+'use client';
+
 import React, { useState } from 'react';
-import { Home, Users, FolderTree, BookOpen, FileQuestion, BarChart3, Settings, LogOut, ChevronDown, ChevronRight, Loader, MonitorPlay } from 'lucide-react'; // Import MonitorPlay
+import { Home, Users, FolderTree, BookOpen, FileQuestion, BarChart3, Settings, LogOut, ChevronDown, ChevronRight, Loader, MonitorPlay, Sparkles } from 'lucide-react';
 import { useRouter, usePathname } from 'next/navigation';
-import { useAuth } from '@/hooks/useAuth'; // Import useAuth hook
+import { useAuth } from '@/hooks/useAuth';
 
 interface MenuItem {
   key: string;
@@ -23,7 +25,7 @@ interface SubMenuItem {
 const AdminSidebar = () => {
   const router = useRouter();
   const pathname = usePathname();
-  const { logout, isLoading: isLoggingOut } = useAuth(); // Use isLoading from useAuth
+  const { logout, isLoading: isLoggingOut } = useAuth();
   const [expandedMenus, setExpandedMenus] = useState<Record<string, boolean>>({});
 
   const toggleSubmenu = (key: string) => {
@@ -39,7 +41,7 @@ const AdminSidebar = () => {
   };
 
   const handleLogout = async () => {
-    await logout(); // Call the logout function from useAuth
+    await logout();
   };
 
   const menuItems: MenuItem[] = [
@@ -76,7 +78,7 @@ const AdminSidebar = () => {
       label: 'Bank Soal',
       icon: FileQuestion,
       path: '/admin/quiz',
-      badge: 'Tahap 2'
+      badge: 'Soon'
     },
     {
       key: 'reports',
@@ -90,7 +92,7 @@ const AdminSidebar = () => {
       icon: Settings,
       path: '/admin/settings'
     },
-    { // New item for learning panel
+    {
       key: 'learning-panel',
       label: 'Lihat sebagai Pegawai',
       icon: MonitorPlay,
@@ -99,27 +101,35 @@ const AdminSidebar = () => {
   ];
 
   return (
-    <div className="w-64 h-screen bg-black text-white flex flex-col fixed left-0 top-0 z-40">
-      {/* Logo Section */}
-      <div className="p-6 border-b border-gray-800">
-        <div className="flex items-center space-x-3">
-          {/* Ganti w-full h-full dengan ukuran pasti, misal w-10 h-10 atau w-12 h-12 */}
-          <div className="w-12 h-12 bg-gradient-to-br from-[#C5A059] to-[#8B7355] rounded-lg flex items-center justify-center overflow-hidden shrink-0">
-            <img
-              src="/logo-alfajr.png"
-              alt="Logo Alfajr"
-              className="w-full h-full object-contain p-1" 
-            />
+    <div className="w-64 h-screen bg-gradient-to-b from-black via-gray-900 to-black text-white flex flex-col fixed left-0 top-0 z-40 shadow-2xl">
+      {/* Logo Section with Glow Effect */}
+      <div className="p-6 border-b border-gray-800/50 relative">
+        <div className="absolute inset-0 bg-gradient-to-r from-[#C5A059]/10 to-transparent"></div>
+        <div className="relative flex items-center space-x-3">
+          <div className="relative">
+            <div className="absolute inset-0 bg-gradient-to-br from-[#C5A059] to-[#8B7355] rounded-xl blur-md opacity-50"></div>
+            <div className="relative w-12 h-12 bg-gradient-to-br from-[#C5A059] to-[#8B7355] rounded-xl flex items-center justify-center overflow-hidden shadow-xl border border-[#C5A059]/30">
+              <img
+                src="/logo-alfajr.png"
+                alt="Logo Alfajr"
+                className="w-full h-full object-contain p-1.5" 
+              />
+            </div>
           </div>
           <div>
-            <h1 className="text-lg font-bold text-[#C5A059]">Alfajr Umroh</h1>
-            <p className="text-xs text-white">Admin Panel</p>
+            <h1 className="text-lg font-bold bg-gradient-to-r from-[#C5A059] via-[#D4AF37] to-[#C5A059] bg-clip-text text-transparent">
+              Alfajr Umroh
+            </h1>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <Sparkles className="text-[#C5A059]" size={12} />
+              <p className="text-xs text-gray-400 font-semibold">Admin Panel</p>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Menu Items */}
-      <nav className="flex-1 overflow-y-auto py-4 custom-scrollbar">
+      {/* Menu Items with Custom Scrollbar */}
+      <nav className="flex-1 overflow-y-auto py-4 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-gray-900">
         {menuItems.map((item) => (
           <div key={item.key}>
             <button
@@ -130,42 +140,72 @@ const AdminSidebar = () => {
                   router.push(item.path);
                 }
               }}
-              className={`w-full flex items-center justify-between px-6 py-3 text-left transition-all hover:bg-gray-900 ${
+              className={`w-full flex items-center justify-between px-6 py-3 text-left transition-all group relative ${
                 isActive(item.path)
-                  ? 'bg-[#C5A059] text-black hover:bg-[#B08F4A]'
-                  : 'text-gray-300'
+                  ? 'bg-gradient-to-r from-[#C5A059] to-amber-600 text-black'
+                  : 'text-gray-300 hover:bg-gray-800/50'
               }`}
             >
+              {/* Active Indicator */}
+              {isActive(item.path) && (
+                <div className="absolute left-0 top-0 h-full w-1 bg-white rounded-r-full"></div>
+              )}
+              
               <div className="flex items-center space-x-3">
-                <item.icon size={20} className={isActive(item.path) ? 'text-black' : 'text-[#C5A059]'} />
-                <span className="font-medium">{item.label}</span>
+                <div className={`p-1.5 rounded-lg transition-all ${
+                  isActive(item.path) 
+                    ? 'bg-black/10' 
+                    : 'bg-gray-800/50 group-hover:bg-[#C5A059]/20'
+                }`}>
+                  <item.icon 
+                    size={20} 
+                    className={isActive(item.path) ? 'text-black' : 'text-[#C5A059]'} 
+                  />
+                </div>
+                <span className={`font-medium text-sm ${isActive(item.path) ? 'font-bold' : ''}`}>
+                  {item.label}
+                </span>
               </div>
+              
               <div className="flex items-center space-x-2">
                 {item.badge && (
-                  <span className="text-[10px] bg-gray-800 text-[#C5A059] px-2 py-0.5 rounded border border-gray-700">
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                    isActive(item.path)
+                      ? 'bg-black/20 text-black'
+                      : 'bg-gradient-to-r from-amber-500 to-orange-600 text-white'
+                  }`}>
                     {item.badge}
                   </span>
                 )}
                 {item.hasSubmenu && (
-                  expandedMenus[item.key] ? <ChevronDown size={16} /> : <ChevronRight size={16} />
+                  <div className={`transition-transform ${expandedMenus[item.key] ? 'rotate-0' : ''}`}>
+                    {expandedMenus[item.key] ? (
+                      <ChevronDown size={16} className={isActive(item.path) ? 'text-black' : 'text-gray-400'} />
+                    ) : (
+                      <ChevronRight size={16} className={isActive(item.path) ? 'text-black' : 'text-gray-400'} />
+                    )}
+                  </div>
                 )}
               </div>
             </button>
 
-            {/* Submenu */}
+            {/* Submenu with Animation */}
             {item.hasSubmenu && expandedMenus[item.key] && (
-              <div className="bg-gray-900/50 border-l-2 border-[#C5A059]/20 ml-6 my-1">
+              <div className="bg-gradient-to-r from-gray-800/30 to-transparent border-l-2 border-[#C5A059]/30 ml-6 my-1 animate-fadeIn">
                 {item.subItems?.map((subItem) => (
                   <button
                     key={subItem.key}
                     onClick={() => router.push(subItem.path)}
-                    className={`w-full flex items-center px-4 py-2 text-left text-sm transition-all hover:text-white ${
+                    className={`w-full flex items-center px-4 py-2.5 text-left text-sm transition-all relative group ${
                       isActive(subItem.path)
-                        ? 'text-[#C5A059] font-semibold'
-                        : 'text-gray-400'
+                        ? 'text-[#C5A059] font-semibold bg-[#C5A059]/10'
+                        : 'text-gray-400 hover:text-white hover:bg-gray-800/30'
                     }`}
                   >
-                    {subItem.label}
+                    {isActive(subItem.path) && (
+                      <div className="absolute left-0 w-1 h-4 bg-[#C5A059] rounded-r-full"></div>
+                    )}
+                    <span className="ml-2">{subItem.label}</span>
                   </button>
                 ))}
               </div>
@@ -174,23 +214,27 @@ const AdminSidebar = () => {
         ))}
       </nav>
 
-      {/* Logout Button */}
-      <div className="border-t border-gray-800 p-4">
+      {/* Logout Button with Gradient */}
+      <div className="border-t border-gray-800/50 p-4 relative">
+        <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
         <button 
           onClick={handleLogout}
           disabled={isLoggingOut}
-          className="w-full flex items-center justify-center space-x-3 px-4 py-3 text-gray-300 hover:bg-red-900/20 hover:text-red-400 rounded-lg transition-all group disabled:opacity-50 disabled:cursor-not-allowed"
+          className="relative w-full flex items-center justify-center space-x-3 px-4 py-3 text-gray-300 hover:bg-gradient-to-r hover:from-red-900/30 hover:to-red-800/30 hover:text-red-400 rounded-xl transition-all group disabled:opacity-50 disabled:cursor-not-allowed border border-gray-800/50 hover:border-red-500/30"
         >
           {isLoggingOut ? (
             <Loader className="animate-spin" size={20} />
           ) : (
-            <LogOut size={20} className="group-hover:stroke-red-400" />
+            <LogOut size={20} className="group-hover:text-red-400" />
           )}
-          <span className="font-medium">
+          <span className="font-semibold text-sm">
             {isLoggingOut ? 'Keluar...' : 'Logout'}
           </span>
         </button>
       </div>
+
+      {/* Bottom Gradient Overlay */}
+      <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-black to-transparent pointer-events-none"></div>
     </div>
   );
 };
