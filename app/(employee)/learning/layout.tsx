@@ -11,7 +11,7 @@ export default function EmployeeLayout({
 }) {
   return (
     <AuthProvider> {/* Bungkus dengan AuthProvider */}
-      <div className="flex h-screen bg-[#F8F9FA]">
+      <div className="flex h-screen bg-brand-gray">
         <Sidebar />
         <main className="flex-1 overflow-y-auto">
           <Toaster position="top-right" />
