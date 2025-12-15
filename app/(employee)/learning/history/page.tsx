@@ -7,8 +7,12 @@ import Link from 'next/link';
 import { BookOpen, CheckCircle, Loader2 } from 'lucide-react';
 import { Course, Progress } from '@/types';
 
+// Perbaikan Tipe: Mengatasi konflik properti 'status'
+// Kita ambil semua properti Course KECUALI status, lalu gabungkan dengan Progress
+type CourseWithProgress = Omit<Course, 'status'> & Progress;
+
 // Copied and updated from the dashboard page for styling consistency
-const CourseCard: React.FC<{ course: Course & Progress }> = ({ course }) => {
+const CourseCard: React.FC<{ course: CourseWithProgress }> = ({ course }) => {
   const isCompleted = course.status === 'completed';
   const isInProgress = course.status === 'in-progress';
 
@@ -70,7 +74,8 @@ const CourseCard: React.FC<{ course: Course & Progress }> = ({ course }) => {
 
 const LearningHistoryPage = () => {
   const { user } = useAuth();
-  const [history, setHistory] = useState<(Course & Progress)[]>([]);
+  // Gunakan tipe baru di sini juga
+  const [history, setHistory] = useState<CourseWithProgress[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
