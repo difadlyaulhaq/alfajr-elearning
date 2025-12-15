@@ -1,9 +1,10 @@
 'use client';
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Edit, Trash2, Eye, Users, Video, X, Save, BookText, Youtube, Loader2, Bold, Italic, List } from 'lucide-react';
+import { Plus, Edit, Trash2, Eye, Users, Video, X, Save, BookText, Youtube, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import ReactMarkdown from 'react-markdown';
+
+import RichTextEditor from '@/components/admin/RichTextEditor';
 
 import { Course, Section, Lesson, Category, User, Division } from '@/types';
 
@@ -94,37 +95,6 @@ const CourseManagement: React.FC<CourseManagementProps> = ({ initialCourses, ini
     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
     const match = url.match(regExp);
     return (match && match[2].length === 11) ? match[2] : null;
-  };
-
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  const handleInsertMarkdown = (syntax: string, placeholder: string = '') => {
-    const textarea = textareaRef.current;
-    if (!textarea) return;
-
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const text = textarea.value;
-
-    let newText;
-    let newCursorPosition;
-
-    if (start !== end) { // Text is selected
-      const selectedText = text.substring(start, end);
-      newText = text.substring(0, start) + syntax + selectedText + syntax + text.substring(end);
-      newCursorPosition = start + syntax.length + selectedText.length + syntax.length;
-    } else { // No text selected, insert placeholder
-      newText = text.substring(0, start) + syntax + placeholder + syntax + text.substring(end);
-      newCursorPosition = start + syntax.length + placeholder.length;
-    }
-
-    setTempLesson(prev => ({ ...prev, textContent: newText }));
-    // Restore cursor position after state update
-    // This requires a slight delay to ensure the DOM is updated
-    setTimeout(() => {
-      textarea.focus();
-      textarea.selectionStart = textarea.selectionEnd = newCursorPosition;
-    }, 0);
   };
 
   const resetForm = () => {
@@ -330,28 +300,12 @@ const CourseManagement: React.FC<CourseManagementProps> = ({ initialCourses, ini
                             {tempLesson.contentType === 'youtube' && <div className="grid grid-cols-2 gap-3 mb-3"><input type="text" placeholder="Durasi (menit)" className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#C5A059] outline-none text-black placeholder:text-gray-400" value={tempLesson.duration} onChange={e => setTempLesson({...tempLesson, duration: e.target.value})} disabled={isLoading}/><input type="text" placeholder="URL Youtube" className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#C5A059] outline-none text-black placeholder:text-gray-400" value={tempLesson.url} onChange={e => setTempLesson({...tempLesson, url: e.target.value})} disabled={isLoading}/></div>}
                             {tempLesson.contentType === 'text' && (
                               <div className="md:col-span-2">
-                                <div className="flex space-x-2 mb-2">
-                                  <button type="button" onClick={() => handleInsertMarkdown('**', 'bold text')} className="p-2 border rounded-md hover:bg-gray-100"><Bold size={16} /></button>
-                                  <button type="button" onClick={() => handleInsertMarkdown('*', 'italic text')} className="p-2 border rounded-md hover:bg-gray-100"><Italic size={16} /></button>
-                                  <button type="button" onClick={() => handleInsertMarkdown('- ', 'list item')} className="p-2 border rounded-md hover:bg-gray-100"><List size={16} /></button>
-                                </div>
-                                <textarea
-                                  ref={textareaRef}
+                                <RichTextEditor
+                                  initialValue={tempLesson.textContent}
+                                  onChange={(content) => setTempLesson({...tempLesson, textContent: content})}
                                   placeholder="Tulis artikel di sini..."
-                                  rows={5}
-                                  className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#C5A059] outline-none text-black placeholder:text-gray-400 w-full"
-                                  value={tempLesson.textContent}
-                                  onChange={e => setTempLesson({...tempLesson, textContent: e.target.value})}
-                                  disabled={isLoading}
+                                  showSaveButton={false}
                                 />
-                                {tempLesson.textContent && (
-                                  <div className="mt-4 p-4 border rounded-lg bg-gray-50">
-                                    <h5 className="font-semibold text-gray-700 mb-2">Preview:</h5>
-                                    <ReactMarkdown className="prose max-w-none">
-                                      {tempLesson.textContent}
-                                    </ReactMarkdown>
-                                  </div>
-                                )}
                               </div>
                             )}
                             <div className="my-3 space-y-2">
@@ -426,7 +380,6 @@ const CourseManagement: React.FC<CourseManagementProps> = ({ initialCourses, ini
               ) : (
                 <button onClick={handleSaveCourse} disabled={isLoading} className="px-6 py-2.5 bg-[#C5A059] text-black rounded-lg hover:bg-[#B08F4A] font-bold flex items-center disabled:opacity-50 disabled:cursor-not-allowed">{isLoading ? <Loader2 size={18} className="mr-2 animate-spin" /> : <Save size={18} className="mr-2" />} {isLoading ? 'Menyimpan...' : 'Simpan Kursus'}</button>
               )}
-            </div>}
             </div>
           </div>
         </div>
