@@ -1,10 +1,11 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Edit, Trash2, Eye, Users, Video, X, Save, BookText, Youtube, Loader2 } from 'lucide-react';
+import { Plus, Edit, Trash2, Eye, Users, Video, X, Save, BookText, Youtube, Loader2, Bold, Italic, List } from 'lucide-react';
 import toast from 'react-hot-toast';
+import ReactMarkdown from 'react-markdown';
 
-import { Course, Section, Lesson, Category } from '@/types';
+import { Course, Section, Lesson, Category, User, Division } from '@/types';
 
 interface CourseManagementProps {
   initialCourses: Course[];
@@ -13,10 +14,44 @@ interface CourseManagementProps {
 
 const CourseManagement: React.FC<CourseManagementProps> = ({ initialCourses, initialCategories }) => {
   const router = useRouter();
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   
   const [courses, setCourses] = useState<Course[]>(initialCourses);
   const [categories, setCategories] = useState<Category[]>(initialCategories);
+  const [allUsers, setAllUsers] = useState<User[]>([]);
+  const [allDivisions, setAllDivisions] = useState<Division[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchAllUsersAndDivisions = async () => {
+      try {
+        const [usersRes, divisionsRes] = await Promise.all([
+          fetch('/api/admin/users'),
+          fetch('/api/admin/divisions')
+        ]);
+
+        const usersData = await usersRes.json();
+        const divisionsData = await divisionsRes.json();
+
+        if (usersData.success) {
+          setAllUsers(usersData.data);
+        } else {
+          toast.error('Failed to fetch users.');
+        }
+
+        if (divisionsData.success) {
+          setAllDivisions(divisionsData.data);
+        } else {
+          toast.error('Failed to fetch divisions.');
+        }
+      } catch (error) {
+        console.error('Error fetching users or divisions:', error);
+        toast.error('Error fetching users or divisions.');
+      }
+    };
+
+    fetchAllUsersAndDivisions();
+  }, []); // Run once on component mount
   
   const [showModal, setShowModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -34,7 +69,9 @@ const CourseManagement: React.FC<CourseManagementProps> = ({ initialCourses, ini
     coverImage: '',
     thumbnail: '',
     status: 'draft',
-    sections: []
+    sections: [],
+    enrolledUserIds: [],
+    enrolledDivisionIds: []
   });
 
   const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
@@ -57,6 +94,37 @@ const CourseManagement: React.FC<CourseManagementProps> = ({ initialCourses, ini
     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
     const match = url.match(regExp);
     return (match && match[2].length === 11) ? match[2] : null;
+  };
+
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const handleInsertMarkdown = (syntax: string, placeholder: string = '') => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = textarea.value;
+
+    let newText;
+    let newCursorPosition;
+
+    if (start !== end) { // Text is selected
+      const selectedText = text.substring(start, end);
+      newText = text.substring(0, start) + syntax + selectedText + syntax + text.substring(end);
+      newCursorPosition = start + syntax.length + selectedText.length + syntax.length;
+    } else { // No text selected, insert placeholder
+      newText = text.substring(0, start) + syntax + placeholder + syntax + text.substring(end);
+      newCursorPosition = start + syntax.length + placeholder.length;
+    }
+
+    setTempLesson(prev => ({ ...prev, textContent: newText }));
+    // Restore cursor position after state update
+    // This requires a slight delay to ensure the DOM is updated
+    setTimeout(() => {
+      textarea.focus();
+      textarea.selectionStart = textarea.selectionEnd = newCursorPosition;
+    }, 0);
   };
 
   const resetForm = () => {
@@ -214,6 +282,8 @@ const CourseManagement: React.FC<CourseManagementProps> = ({ initialCourses, ini
               <button onClick={() => setCurrentStep(1)} disabled={isLoading} className={`px-4 py-2 rounded-full flex items-center space-x-2 ${currentStep === 1 ? 'bg-[#FFF8E7] text-[#C5A059] border border-[#C5A059]' : 'text-gray-400'}`}><span className="w-6 h-6 rounded-full bg-current text-white flex items-center justify-center text-xs">1</span><span className="font-semibold text-sm">Informasi Dasar</span></button>
               <div className="w-8 h-px bg-gray-300 self-center"></div>
               <button onClick={() => setCurrentStep(2)} disabled={isLoading} className={`px-4 py-2 rounded-full flex items-center space-x-2 ${currentStep === 2 ? 'bg-[#FFF8E7] text-[#C5A059] border border-[#C5A059]' : 'text-gray-400'}`}><span className="w-6 h-6 rounded-full bg-current text-white flex items-center justify-center text-xs">2</span><span className="font-semibold text-sm">Kurikulum</span></button>
+              <div className="w-8 h-px bg-gray-300 self-center"></div>
+              <button onClick={() => setCurrentStep(3)} disabled={isLoading} className={`px-4 py-2 rounded-full flex items-center space-x-2 ${currentStep === 3 ? 'bg-[#FFF8E7] text-[#C5A059] border border-[#C5A059]' : 'text-gray-400'}`}><span className="w-6 h-6 rounded-full bg-current text-white flex items-center justify-center text-xs">3</span><span className="font-semibold text-sm">Enrollment</span></button>
             </div></div>
             <div className="flex-1 overflow-y-auto p-8">
               {currentStep === 1 ? (
@@ -225,7 +295,7 @@ const CourseManagement: React.FC<CourseManagementProps> = ({ initialCourses, ini
                     <div className="md:col-span-2"><label className="block text-sm font-semibold text-gray-700 mb-2">Cover Image (URL)</label><input type="text" value={formData.coverImage} onChange={e => setFormData({...formData, coverImage: e.target.value})} className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#C5A059] outline-none text-black placeholder:text-gray-400" placeholder="https://..." disabled={isLoading}/></div>
                     <div className="md:col-span-2"><label className="block text-sm font-semibold text-gray-700 mb-2">Status</label><div className="flex space-x-4"><label className="flex items-center space-x-2 cursor-pointer"><input type="radio" checked={formData.status === 'draft'} onChange={() => setFormData({...formData, status: 'draft'})} className="text-[#C5A059]" disabled={isLoading} /><span className="text-black">Draft</span></label><label className="flex items-center space-x-2 cursor-pointer"><input type="radio" checked={formData.status === 'active'} onChange={() => setFormData({...formData, status: 'active'})} className="text-[#C5A059]" disabled={isLoading} /><span className="text-black">Active</span></label></div></div>
                 </div>
-              ) : (
+              ) : currentStep === 2 ? (
                 <div className="max-w-4xl mx-auto space-y-6">
                   {formData.sections?.map((section, sIndex) => (
                     <div key={section.id} className="bg-white border rounded-xl shadow-sm overflow-hidden">
@@ -258,7 +328,32 @@ const CourseManagement: React.FC<CourseManagementProps> = ({ initialCourses, ini
                               </select>
                             </div>
                             {tempLesson.contentType === 'youtube' && <div className="grid grid-cols-2 gap-3 mb-3"><input type="text" placeholder="Durasi (menit)" className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#C5A059] outline-none text-black placeholder:text-gray-400" value={tempLesson.duration} onChange={e => setTempLesson({...tempLesson, duration: e.target.value})} disabled={isLoading}/><input type="text" placeholder="URL Youtube" className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#C5A059] outline-none text-black placeholder:text-gray-400" value={tempLesson.url} onChange={e => setTempLesson({...tempLesson, url: e.target.value})} disabled={isLoading}/></div>}
-                            {tempLesson.contentType === 'text' && <textarea placeholder="Tulis artikel di sini..." rows={5} className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#C5A059] outline-none text-black placeholder:text-gray-400 w-full" value={tempLesson.textContent} onChange={e => setTempLesson({...tempLesson, textContent: e.target.value})} disabled={isLoading}/>}
+                            {tempLesson.contentType === 'text' && (
+                              <div className="md:col-span-2">
+                                <div className="flex space-x-2 mb-2">
+                                  <button type="button" onClick={() => handleInsertMarkdown('**', 'bold text')} className="p-2 border rounded-md hover:bg-gray-100"><Bold size={16} /></button>
+                                  <button type="button" onClick={() => handleInsertMarkdown('*', 'italic text')} className="p-2 border rounded-md hover:bg-gray-100"><Italic size={16} /></button>
+                                  <button type="button" onClick={() => handleInsertMarkdown('- ', 'list item')} className="p-2 border rounded-md hover:bg-gray-100"><List size={16} /></button>
+                                </div>
+                                <textarea
+                                  ref={textareaRef}
+                                  placeholder="Tulis artikel di sini..."
+                                  rows={5}
+                                  className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#C5A059] outline-none text-black placeholder:text-gray-400 w-full"
+                                  value={tempLesson.textContent}
+                                  onChange={e => setTempLesson({...tempLesson, textContent: e.target.value})}
+                                  disabled={isLoading}
+                                />
+                                {tempLesson.textContent && (
+                                  <div className="mt-4 p-4 border rounded-lg bg-gray-50">
+                                    <h5 className="font-semibold text-gray-700 mb-2">Preview:</h5>
+                                    <ReactMarkdown className="prose max-w-none">
+                                      {tempLesson.textContent}
+                                    </ReactMarkdown>
+                                  </div>
+                                )}
+                              </div>
+                            )}
                             <div className="my-3 space-y-2">
                               <label className="text-xs font-bold text-gray-600 block">Lampiran (Opsional)</label>
                               <input placeholder="Nama File Lampiran" className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#C5A059] outline-none text-black placeholder:text-gray-400 w-full text-sm" value={tempLesson.attachmentName || ''} onChange={e => setTempLesson(prev => ({...prev, attachmentName: e.target.value}))} disabled={isLoading} />
@@ -277,12 +372,61 @@ const CourseManagement: React.FC<CourseManagementProps> = ({ initialCourses, ini
                   ))}
                   <button onClick={addSection} disabled={isLoading} className="w-full py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 font-semibold border border-dashed border-gray-300 flex items-center justify-center"><Plus size={20} className="mr-2" /> Tambah Bab Baru</button>
                 </div>
+              ) : ( // currentStep === 3
+                <div className="max-w-2xl mx-auto space-y-6">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Enroll User(s)</label>
+                    <select
+                      multiple
+                      value={formData.enrolledUserIds}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          enrolledUserIds: Array.from(e.target.selectedOptions, (option) => option.value),
+                        })
+                      }
+                      className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#C5A059] outline-none text-black bg-white h-48"
+                      disabled={isLoading}
+                    >
+                      {allUsers.map((user) => (
+                        <option key={user.id} value={user.id}>
+                          {user.name} ({user.email})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Enroll Division(s)</label>
+                    <select
+                      multiple
+                      value={formData.enrolledDivisionIds}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          enrolledDivisionIds: Array.from(e.target.selectedOptions, (option) => option.value),
+                        })
+                      }
+                      className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#C5A059] outline-none text-black bg-white h-48"
+                      disabled={isLoading}
+                    >
+                      {allDivisions.map((division) => (
+                        <option key={division.id} value={division.id}>
+                          {division.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
               )}
             </div>
             <div className="p-6 border-t flex justify-end space-x-3 bg-white rounded-b-xl">
-              {currentStep === 2 && <button onClick={() => setCurrentStep(1)} disabled={isLoading} className="px-6 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-semibold">Kembali</button>}
-              {currentStep === 1 ? <button onClick={() => setCurrentStep(2)} disabled={isLoading} className="px-6 py-2.5 bg-[#C5A059] text-black rounded-lg hover:bg-[#B08F4A] font-bold">Lanjut: Kurikulum</button>
-               : <button onClick={handleSaveCourse} disabled={isLoading} className="px-6 py-2.5 bg-[#C5A059] text-black rounded-lg hover:bg-[#B08F4A] font-bold flex items-center disabled:opacity-50 disabled:cursor-not-allowed">{isLoading ? <Loader2 size={18} className="mr-2 animate-spin" /> : <Save size={18} className="mr-2" />} {isLoading ? 'Menyimpan...' : 'Simpan Kursus'}</button>}
+              {currentStep > 1 && <button onClick={() => setCurrentStep(prev => prev - 1)} disabled={isLoading} className="px-6 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-semibold">Kembali</button>}
+              {currentStep < 3 ? (
+                <button onClick={() => setCurrentStep(prev => prev + 1)} disabled={isLoading} className="px-6 py-2.5 bg-[#C5A059] text-black rounded-lg hover:bg-[#B08F4A] font-bold">Lanjut</button>
+              ) : (
+                <button onClick={handleSaveCourse} disabled={isLoading} className="px-6 py-2.5 bg-[#C5A059] text-black rounded-lg hover:bg-[#B08F4A] font-bold flex items-center disabled:opacity-50 disabled:cursor-not-allowed">{isLoading ? <Loader2 size={18} className="mr-2 animate-spin" /> : <Save size={18} className="mr-2" />} {isLoading ? 'Menyimpan...' : 'Simpan Kursus'}</button>
+              )}
+            </div>}
             </div>
           </div>
         </div>

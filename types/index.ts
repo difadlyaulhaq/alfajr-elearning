@@ -23,6 +23,8 @@ export interface Course {
   sections: Section[];
   totalVideos: number;
   totalStudents: number;
+  enrolledUserIds: string[];
+  enrolledDivisionIds: string[];
 }
 
 export interface Section {
