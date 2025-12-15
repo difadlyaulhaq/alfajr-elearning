@@ -1,10 +1,9 @@
 'use client';
 import React, { useState, useRef, useEffect } from 'react';
 import { 
-  Bold, Italic, List, ListOrdered, Link as LinkIcon, 
-  Heading1, Heading2, Quote, Code, Image as ImageIcon,
-  Eye, Save, X, Undo, Redo, Type
-} from 'lucide-react';
+    Bold, Italic, List, ListOrdered, Link as LinkIcon,
+    Heading1, Heading2, Heading3, Quote, Code, Image as ImageIcon, // Changed Type to Heading3
+    Eye, Save, X, Undo, Redo} from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
 interface RichTextEditorProps {
@@ -127,7 +126,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
     { type: 'divider' },
     { icon: Heading1, label: 'Heading 1', action: () => insertLine('# ') },
     { icon: Heading2, label: 'Heading 2', action: () => insertLine('## ') },
-    { type: 'type', label: 'Heading 3', action: () => insertLine('### ') },
+    { icon: Heading3, label: 'Heading 3', action: () => insertLine('### ') },
     { type: 'divider' },
     { icon: Bold, label: 'Bold (Ctrl+B)', action: () => insertMarkdown('**', '**', 'teks tebal') },
     { icon: Italic, label: 'Italic (Ctrl+I)', action: () => insertMarkdown('*', '*', 'teks miring') },
@@ -173,7 +172,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
           {tools.map((tool, index) => 
             tool.type === 'divider' ? (
               <div key={index} className="w-px h-6 bg-gray-300 mx-1" />
-            ) : (
+            ) : tool.icon ? (
               <button
                 key={index}
                 onClick={tool.action}
@@ -183,7 +182,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
               >
                 <tool.icon size={18} />
               </button>
-            )
+            ) : null
           )}
         </div>
 
