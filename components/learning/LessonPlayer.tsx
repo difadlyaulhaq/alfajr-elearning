@@ -10,6 +10,7 @@ interface LessonPlayerProps {
   currentLesson: Lesson;
   prevLesson: Lesson | null;
   nextLesson: Lesson | null;
+  completedLessons: string[];
 }
 
 export default function LessonPlayer({
@@ -17,10 +18,13 @@ export default function LessonPlayer({
   currentLesson,
   prevLesson,
   nextLesson,
+  completedLessons,
 }: LessonPlayerProps) {
   if (!course || !currentLesson) {
     notFound();
   }
+
+  const isLessonCompleted = completedLessons.includes(currentLesson.id);
 
   return (
     <div className="flex h-screen">
@@ -30,7 +34,7 @@ export default function LessonPlayer({
           lesson={currentLesson}
           prevLesson={prevLesson}
           nextLesson={nextLesson}
-          isCompleted={false}
+          isCompleted={isLessonCompleted}
         />
       </div>
       <div className="w-80 border-l">
@@ -38,6 +42,7 @@ export default function LessonPlayer({
           courseId={course.id}
           sections={course.sections}
           currentLessonId={currentLesson.id}
+          completedLessons={completedLessons}
         />
       </div>
     </div>

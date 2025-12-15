@@ -28,9 +28,29 @@ export async function getCoursePageData(
       return null;
     }
 
-    const courseData = courseDoc.data();
+    const data = courseDoc.data();
 
-    return { id: courseDoc.id, ...courseData } as Course;
+    if (!data) {
+      return null;
+    }
+    
+    // Manually construct the object to ensure Timestamps are converted
+    return {
+      id: courseDoc.id,
+      title: data.title,
+      description: data.description,
+      categoryId: data.categoryId,
+      categoryName: data.categoryName,
+      level: data.level,
+      coverImage: data.coverImage,
+      thumbnail: data.thumbnail,
+      status: data.status,
+      createdBy: data.createdBy,
+      createdAt: data.createdAt && data.createdAt.toDate ? data.createdAt.toDate() : new Date(data.createdAt),
+      sections: data.sections || [],
+      totalVideos: data.totalVideos || 0,
+      totalStudents: data.totalStudents || 0,
+    } as Course;
   } catch (error) {
     console.error(
       `[FIREBASE_GET_COURSE_BY_ID_ERROR] Failed to fetch course ${courseId}:`,
@@ -56,10 +76,22 @@ export async function getAllCourses(): Promise<Course[]> {
 
         const courses = coursesSnapshot.docs.map(doc => {
             const data = doc.data();
+            // Manually construct the object to ensure Timestamps are converted
             return {
-                id: doc.id,
-                ...data,
-                createdAt: data.createdAt.toDate ? data.createdAt.toDate() : new Date(data.createdAt),
+              id: doc.id,
+              title: data.title,
+              description: data.description,
+              categoryId: data.categoryId,
+              categoryName: data.categoryName,
+              level: data.level,
+              coverImage: data.coverImage,
+              thumbnail: data.thumbnail,
+              status: data.status,
+              createdBy: data.createdBy,
+              createdAt: data.createdAt && data.createdAt.toDate ? data.createdAt.toDate() : new Date(data.createdAt),
+              sections: data.sections || [],
+              totalVideos: data.totalVideos || 0,
+              totalStudents: data.totalStudents || 0,
             } as Course;
         });
 

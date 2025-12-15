@@ -45,22 +45,18 @@ export interface Progress {
   status: 'not-started' | 'in-progress' | 'completed';
   lastAccess: Date;
   completedAt?: Date;
+  completedLessons: string[];
 }
 export interface Lesson {
   id: string;
   title: string;
-  contentType: 'video' | 'youtube' | 'text';
+  contentType: 'youtube' | 'text';
   sourceType: 'embed' | 'drive';
   url: string;
   textContent: string; // Untuk tipe 'text'
   duration: string;
   watermark: boolean;
   forceComplete: boolean;
-  attachments: Attachment[];
-}
-
-export interface Attachment {
-  name: string;
-  url:string;
-  type: 'link';
+  attachmentName?: string;
+  attachmentUrl?: string;
 }

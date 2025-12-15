@@ -1,9 +1,10 @@
 'use client';
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Search, Edit, Trash2, Eye, Users, Video, FileText, Upload, Link as LinkIcon, Youtube, ExternalLink, X, ChevronDown, ChevronUp, PlayCircle, Clock, AlertCircle, Save, BookText, Droplets } from 'lucide-react';
+import { Plus, Edit, Trash2, Eye, Users, Video, X, Save, BookText, Youtube, Loader2 } from 'lucide-react';
+import toast from 'react-hot-toast';
 
-import { Course, Section, Lesson, Attachment, Category } from '@/types';
+import { Course, Section, Lesson, Category } from '@/types';
 
 interface CourseManagementProps {
   initialCourses: Course[];
@@ -13,21 +14,17 @@ interface CourseManagementProps {
 const CourseManagement: React.FC<CourseManagementProps> = ({ initialCourses, initialCategories }) => {
   const router = useRouter();
   
-  // State Utama
   const [courses, setCourses] = useState<Course[]>(initialCourses);
   const [categories, setCategories] = useState<Category[]>(initialCategories);
-  const [isLoading, setIsLoading] = useState(false); // Only for mutations
+  const [isLoading, setIsLoading] = useState(false);
   
-  // State Modal Form (Add/Edit)
   const [showModal, setShowModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   
-  // State Modal Preview
   const [showPreview, setShowPreview] = useState(false);
   const [previewData, setPreviewData] = useState<Course | null>(null);
 
-  // State Form Data
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState<Partial<Course>>({
     title: '',
@@ -40,7 +37,6 @@ const CourseManagement: React.FC<CourseManagementProps> = ({ initialCourses, ini
     sections: []
   });
 
-  // State Sementara untuk Form Lesson
   const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
   const [editingLessonId, setEditingLessonId] = useState<string | null>(null);
   const [tempLesson, setTempLesson] = useState<Partial<Lesson>>({
@@ -52,11 +48,10 @@ const CourseManagement: React.FC<CourseManagementProps> = ({ initialCourses, ini
     duration: '',
     watermark: true,
     forceComplete: true,
-    attachments: []
+    attachmentName: '',
+    attachmentUrl: ''
   });
-  const [tempAttachment, setTempAttachment] = useState({ name: '', url: '' });
 
-  // --- Helper Functions ---
   const getYouTubeId = (url: string) => {
     if (!url) return null;
     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
@@ -68,13 +63,12 @@ const CourseManagement: React.FC<CourseManagementProps> = ({ initialCourses, ini
     setFormData({
       title: '', categoryId: '', level: 'basic', description: '', coverImage: '', thumbnail: '', status: 'draft', sections: []
     });
-    setTempLesson({ title: '', contentType: 'youtube', sourceType: 'embed', url: '', textContent: '', duration: '', watermark: true, forceComplete: true, attachments: [] });
+    setTempLesson({ title: '', contentType: 'youtube', sourceType: 'embed', url: '', textContent: '', duration: '', watermark: true, forceComplete: true, attachmentName: '', attachmentUrl: '' });
     setCurrentStep(1);
     setIsEditing(false);
     setEditId(null);
   };
 
-  // --- Handlers ---
   const handleOpenAdd = () => {
     resetForm();
     setShowModal(true);
@@ -95,597 +89,200 @@ const CourseManagement: React.FC<CourseManagementProps> = ({ initialCourses, ini
 
   const handleDelete = async (id: string, title: string) => {
     if (!confirm(`Hapus kursus "${title}"?`)) return;
-    try {
-      const res = await fetch(`/api/admin/courses/${id}`, { method: 'DELETE' });
-      const data = await res.json();
-      if (data.success) {
-        alert('Kursus berhasil dihapus');
-        router.refresh(); // Refresh the page to get new data
-      } else {
-        alert(data.error);
-      }
-    } catch (error) {
-      console.error('Delete error:', error);
-    }
+    const promise = fetch(`/api/admin/courses/${id}`, { method: 'DELETE' })
+      .then(async res => {
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Gagal menghapus kursus');
+        return data;
+      });
+    toast.promise(promise, {
+      loading: 'Menghapus kursus...',
+      success: 'Kursus berhasil dihapus!',
+      error: (err) => `Gagal: ${err.message}`,
+    }).then(() => router.refresh()).catch(error => console.error('Delete error:', error));
   };
 
   const handleSaveCourse = async () => {
     setIsLoading(true);
     if (!formData.title || !formData.categoryId) {
-      alert('Judul dan Kategori wajib diisi');
+      toast.error('Judul dan Kategori wajib diisi');
       setIsLoading(false);
       return;
     }
+    toast.loading('Menyimpan kursus...');
     
-    // Auto-generate thumbnail from the first YouTube video using the new scraping API
     let videoThumbnail = '';
-    const firstSection = formData.sections?.[0];
-    const firstLesson = firstSection?.lessons[0];
-
+    const firstLesson = formData.sections?.[0]?.lessons[0];
     if (firstLesson && firstLesson.contentType === 'youtube' && firstLesson.url) {
-      try {
-        console.log(`Scraping thumbnail for URL: ${firstLesson.url}`);
-        const scrapeRes = await fetch(`/api/utils/scrape-thumbnail?url=${encodeURIComponent(firstLesson.url)}`);
-        const scrapeData = await scrapeRes.json();
-        if (scrapeData.success) {
-          videoThumbnail = scrapeData.thumbnailUrl;
-          console.log(`Scraping success, thumbnail found: ${videoThumbnail}`);
-        } else {
-          console.warn('Scraping failed, will use fallback method.', scrapeData.error);
-        }
-      } catch (e) {
-        console.error("Thumbnail scraping fetch call failed, will use fallback method.", e);
-      }
+      const videoId = getYouTubeId(firstLesson.url);
+      if (videoId) videoThumbnail = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
     }
 
-    // Fallback to the old method if scraping failed or wasn't applicable
-    if (!videoThumbnail && firstLesson && firstLesson.contentType === 'youtube' && firstLesson.url) {
-        console.log("Using fallback thumbnail method.");
-        const videoId = getYouTubeId(firstLesson.url);
-        if (videoId) {
-            videoThumbnail = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
-        }
-    }
-
-    const finalFormData = {
-      ...formData,
-      thumbnail: videoThumbnail || formData.coverImage,
-    };
+    const finalFormData = { ...formData, thumbnail: videoThumbnail || formData.coverImage };
 
     try {
       const url = isEditing ? `/api/admin/courses/${editId}` : '/api/admin/courses';
       const method = isEditing ? 'PATCH' : 'POST';
-
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(finalFormData)
-      });
-
+      const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(finalFormData) });
       const result = await res.json();
+      toast.dismiss();
       if (result.success) {
-        alert(`Kursus berhasil ${isEditing ? 'diperbarui' : 'dibuat'}!`);
+        toast.success(`Kursus berhasil ${isEditing ? 'diperbarui' : 'dibuat'}!`);
         setShowModal(false);
-        router.refresh(); // Refresh the page to get new data
+        router.refresh();
       } else {
-        alert(`Gagal: ${result.error}`);
+        toast.error(`Gagal: ${result.error}`);
       }
     } catch (error) {
       console.error('Save error:', error);
-      alert('Terjadi kesalahan sistem');
+      toast.dismiss();
+      toast.error('Terjadi kesalahan sistem');
     } finally {
       setIsLoading(false);
     }
   };
 
-  // --- Curriculum Handlers ---
-  const addSection = () => {
-    const newSection: Section = {
-      id: Date.now().toString(),
-      title: `Bab ${(formData.sections?.length || 0) + 1}`,
-      order: (formData.sections?.length || 0),
-      lessons: []
-    };
-    setFormData(prev => ({ ...prev, sections: [...(prev.sections || []), newSection] }));
-  };
-
-  const updateSectionTitle = (index: number, title: string) => {
-    const newSections = [...(formData.sections || [])];
-    newSections[index].title = title;
-    setFormData(prev => ({ ...prev, sections: newSections }));
-  };
-
-  const deleteSection = (index: number) => {
-    const newSections = (formData.sections || []).filter((_, i) => i !== index);
-    setFormData(prev => ({ ...prev, sections: newSections }));
-  };
-
-  const handleStartEditLesson = (lesson: Lesson, sectionId: string) => {
-    setActiveSectionId(sectionId);
-    setEditingLessonId(lesson.id);
-    setTempLesson(lesson);
-  };
-
-  const handleCancelEditLesson = () => {
-    setActiveSectionId(null);
-    setEditingLessonId(null);
-    setTempLesson({ title: '', contentType: 'youtube', sourceType: 'embed', url: '', textContent: '', duration: '', watermark: true, forceComplete: true, attachments: [] });
-  };
+  const addSection = () => setFormData(prev => ({ ...prev, sections: [...(prev.sections || []), { id: Date.now().toString(), title: `Bab ${(prev.sections?.length || 0) + 1}`, order: prev.sections?.length || 0, lessons: [] }] }));
+  const updateSectionTitle = (index: number, title: string) => { const newSections = [...(formData.sections || [])]; newSections[index].title = title; setFormData(prev => ({ ...prev, sections: newSections })); };
+  const deleteSection = (index: number) => setFormData(prev => ({ ...prev, sections: (prev.sections || []).filter((_, i) => i !== index) }));
+  const handleStartEditLesson = (lesson: Lesson, sectionId: string) => { setActiveSectionId(sectionId); setEditingLessonId(lesson.id); setTempLesson(lesson); };
+  const handleCancelEditLesson = () => { setActiveSectionId(null); setEditingLessonId(null); setTempLesson({ title: '', contentType: 'youtube', url: '', textContent: '', duration: '', attachmentName: '', attachmentUrl: '' }); };
 
   const handleDeleteLesson = (lessonId: string, sectionId: string) => {
     if (!confirm('Anda yakin ingin menghapus materi ini?')) return;
-
-    const newSections = (formData.sections || []).map(section => {
-      if (section.id === sectionId) {
-        return { ...section, lessons: section.lessons.filter(l => l.id !== lessonId) };
-      }
-      return section;
-    });
+    const newSections = (formData.sections || []).map(s => s.id === sectionId ? { ...s, lessons: s.lessons.filter(l => l.id !== lessonId) } : s);
     setFormData(prev => ({ ...prev, sections: newSections }));
+    toast.success('Materi dihapus dari daftar.');
   };
 
   const handleSaveLesson = (sectionId: string) => {
-    if (!tempLesson.title) {
-      alert('Judul materi wajib diisi');
-      return;
-    }
-    if ((tempLesson.contentType === 'youtube' || tempLesson.contentType === 'video') && !tempLesson.url) {
-      alert('URL materi wajib diisi');
-      return;
-    }
-     if (tempLesson.contentType === 'text' && !tempLesson.textContent) {
-      alert('Konten artikel wajib diisi');
-      return;
-    }
+    if (!tempLesson.title) return toast.error('Judul materi wajib diisi');
+    if (tempLesson.contentType === 'youtube' && !tempLesson.url) return toast.error('URL materi wajib diisi');
+    if (tempLesson.contentType === 'text' && !tempLesson.textContent) return toast.error('Konten artikel wajib diisi');
 
-    let newSections;
-
-    if (editingLessonId) {
-      // Update existing lesson
-      newSections = (formData.sections || []).map(section => {
-        if (section.id === sectionId) {
-          return {
-            ...section,
-            lessons: section.lessons.map(l => l.id === editingLessonId ? { ...tempLesson as Lesson } : l)
-          };
-        }
-        return section;
-      });
-    } else {
-      // Add new lesson
-      const newLesson: Lesson = {
-        ...tempLesson as Lesson,
-        id: Date.now().toString(),
-      };
-      newSections = (formData.sections || []).map(section => {
-        if (section.id === sectionId) {
-          return { ...section, lessons: [...section.lessons, newLesson] };
-        }
-        return section;
-      });
-    }
-
+    const lessonData = { ...tempLesson, id: editingLessonId || Date.now().toString() } as Lesson;
+    const newSections = (formData.sections || []).map(s => {
+      if (s.id === sectionId) {
+        const newLessons = editingLessonId ? s.lessons.map(l => l.id === editingLessonId ? lessonData : l) : [...s.lessons, lessonData];
+        return { ...s, lessons: newLessons };
+      }
+      return s;
+    });
     setFormData(prev => ({ ...prev, sections: newSections }));
     handleCancelEditLesson();
-  };
-
-  const addAttachmentToTempLesson = () => {
-    if (!tempAttachment.name || !tempAttachment.url) return;
-    setTempLesson(prev => ({
-      ...prev,
-      attachments: [...(prev.attachments || []), { ...tempAttachment, type: 'link' }]
-    }));
-    setTempAttachment({ name: '', url: '' });
+    toast.success('Materi berhasil disimpan sementara!');
   };
 
   return (
     <div className="min-h-screen bg-[#F8F9FA]">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-8 py-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-black">Kelola Kursus</h1>
-            <p className="text-gray-600 mt-1">Buat dan kelola materi pembelajaran</p>
-          </div>
-          <button
-            onClick={handleOpenAdd}
-            className="flex items-center space-x-2 bg-[#C5A059] text-black px-5 py-2.5 rounded-lg hover:bg-[#B08F4A] transition-colors font-semibold shadow-md"
-          >
-            <Plus size={20} />
-            <span>Buat Kursus Baru</span>
-          </button>
+      <div className="bg-white border-b border-gray-200 px-8 py-6 flex items-center justify-between">
+        <div><h1 className="text-2xl font-bold text-black">Kelola Kursus</h1><p className="text-gray-600 mt-1">Buat dan kelola materi pembelajaran</p></div>
+        <button onClick={handleOpenAdd} className="flex items-center space-x-2 bg-[#C5A059] text-black px-5 py-2.5 rounded-lg hover:bg-[#B08F4A] transition-colors font-semibold shadow-md"><Plus size={20} /><span>Buat Kursus Baru</span></button>
+      </div>
+
+      <div className="p-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {courses.map((course) => (
+            <div key={course.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow group">
+              <div className="h-48 bg-gray-200 relative">
+                <img src={course.thumbnail || course.coverImage || '/logo-alfajr.png'} alt={course.title} className="w-full h-full object-cover" />
+                <span className={`absolute top-3 left-3 px-2 py-1 rounded text-xs font-bold ${course.status === 'active' ? 'bg-green-500 text-white' : 'bg-gray-500 text-white'}`}>{course.status === 'active' ? 'Aktif' : 'Draft'}</span>
+                <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm px-2 py-1 rounded text-xs font-bold text-[#C5A059] shadow-sm">{course.categoryName}</div>
+              </div>
+              <div className="p-5">
+                <h3 className="font-bold text-lg text-black mb-2 line-clamp-1" title={course.title}>{course.title}</h3>
+                <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
+                  <span className="flex items-center"><Video size={14} className="mr-1"/> {course.sections?.reduce((acc, s) => acc + s.lessons.length, 0) || 0} Materi</span>
+                  <span className="flex items-center"><Users size={14} className="mr-1"/> {course.totalStudents} Peserta</span>
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={() => handleOpenPreview(course)} className="flex-1 py-2 bg-blue-50 text-blue-600 rounded hover:bg-blue-100 font-medium text-sm flex items-center justify-center"><Eye size={16} className="mr-1" /> Preview</button>
+                  <button onClick={() => handleOpenEdit(course)} className="flex-1 py-2 bg-[#FFF8E7] text-[#C5A059] rounded hover:bg-[#FFF3D6] font-medium text-sm flex items-center justify-center"><Edit size={16} className="mr-1" /> Edit</button>
+                  <button onClick={() => handleDelete(course.id, course.title)} className="p-2 bg-red-50 text-red-600 rounded hover:bg-red-100"><Trash2 size={16} /></button>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 
-      {/* Course List */}
-      <div className="p-8">
-        {isLoading ? (
-          <div className="text-center py-20 text-gray-500">Memuat data...</div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {courses.map((course) => (
-              <div key={course.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow group">
-                <div className="h-48 bg-gray-200 relative">
-                  {(course.thumbnail || course.coverImage) ? (
-                    <img src={course.thumbnail || course.coverImage} alt={course.title} className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#C5A059] to-[#8B7355] text-white text-4xl">
-                      📚
-                    </div>
-                  )}
-                  <span className={`absolute top-3 left-3 px-2 py-1 rounded text-xs font-bold ${course.status === 'active' ? 'bg-green-500 text-white' : 'bg-gray-500 text-white'}`}>
-                    {course.status === 'active' ? 'Aktif' : 'Draft'}
-                  </span>
-                  <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm px-2 py-1 rounded text-xs font-bold text-[#C5A059] shadow-sm">
-                    {course.categoryName}
-                  </div>
-                </div>
-                <div className="p-5">
-                  <h3 className="font-bold text-lg text-black mb-2 line-clamp-1" title={course.title}>{course.title}</h3>
-                  <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
-                    <span className="flex items-center"><Video size={14} className="mr-1"/> {course.totalVideos || course.sections?.reduce((acc, s) => acc + s.lessons.length, 0) || 0} Materi</span>
-                    <span className="flex items-center"><Users size={14} className="mr-1"/> {course.totalStudents} Peserta</span>
-                  </div>
-                  <div className="flex gap-2">
-                    <button 
-                      onClick={() => handleOpenPreview(course)}
-                      className="flex-1 py-2 bg-blue-50 text-blue-600 rounded hover:bg-blue-100 font-medium text-sm flex items-center justify-center"
-                    >
-                      <Eye size={16} className="mr-1" /> Preview
-                    </button>
-                    <button 
-                      onClick={() => handleOpenEdit(course)}
-                      className="flex-1 py-2 bg-[#FFF8E7] text-[#C5A059] rounded hover:bg-[#FFF3D6] font-medium text-sm flex items-center justify-center"
-                    >
-                      <Edit size={16} className="mr-1" /> Edit
-                    </button>
-                    <button 
-                      onClick={() => handleDelete(course.id, course.title)}
-                      className="p-2 bg-red-50 text-red-600 rounded hover:bg-red-100"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* --- ADD / EDIT MODAL --- */}
       {showModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl w-full max-w-5xl h-[90vh] flex flex-col shadow-2xl">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between p-6 border-b border-gray-100">
-              <h2 className="text-xl font-bold text-black">{isEditing ? 'Edit Kursus' : 'Buat Kursus Baru'}</h2>
-              <button onClick={() => setShowModal(false)}><X size={24} className="text-gray-400 hover:text-red-500" /></button>
-            </div>
-
-            {/* Steps */}
-            <div className="flex justify-center py-4 bg-gray-50 border-b">
-              <div className="flex space-x-4">
-                <button onClick={() => setCurrentStep(1)} className={`px-4 py-2 rounded-full flex items-center space-x-2 ${currentStep === 1 ? 'bg-[#FFF8E7] text-[#C5A059] border border-[#C5A059]' : 'text-gray-400'}`}>
-                  <span className="w-6 h-6 rounded-full bg-current text-white flex items-center justify-center text-xs">1</span>
-                  <span className="font-semibold text-sm">Informasi Dasar</span>
-                </button>
-                <div className="w-8 h-px bg-gray-300 self-center"></div>
-                <button onClick={() => setCurrentStep(2)} className={`px-4 py-2 rounded-full flex items-center space-x-2 ${currentStep === 2 ? 'bg-[#FFF8E7] text-[#C5A059] border border-[#C5A059]' : 'text-gray-400'}`}>
-                  <span className="w-6 h-6 rounded-full bg-current text-white flex items-center justify-center text-xs">2</span>
-                  <span className="font-semibold text-sm">Kurikulum</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Content */}
+            <div className="flex items-center justify-between p-6 border-b"><h2 className="text-xl font-bold text-black">{isEditing ? 'Edit Kursus' : 'Buat Kursus Baru'}</h2><button onClick={() => setShowModal(false)} disabled={isLoading}><X size={24} className="text-gray-400 hover:text-red-500" /></button></div>
+            <div className="flex justify-center py-4 bg-gray-50 border-b"><div className="flex space-x-4">
+              <button onClick={() => setCurrentStep(1)} disabled={isLoading} className={`px-4 py-2 rounded-full flex items-center space-x-2 ${currentStep === 1 ? 'bg-[#FFF8E7] text-[#C5A059] border border-[#C5A059]' : 'text-gray-400'}`}><span className="w-6 h-6 rounded-full bg-current text-white flex items-center justify-center text-xs">1</span><span className="font-semibold text-sm">Informasi Dasar</span></button>
+              <div className="w-8 h-px bg-gray-300 self-center"></div>
+              <button onClick={() => setCurrentStep(2)} disabled={isLoading} className={`px-4 py-2 rounded-full flex items-center space-x-2 ${currentStep === 2 ? 'bg-[#FFF8E7] text-[#C5A059] border border-[#C5A059]' : 'text-gray-400'}`}><span className="w-6 h-6 rounded-full bg-current text-white flex items-center justify-center text-xs">2</span><span className="font-semibold text-sm">Kurikulum</span></button>
+            </div></div>
             <div className="flex-1 overflow-y-auto p-8">
               {currentStep === 1 ? (
                 <div className="max-w-2xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Judul Kursus</label>
-                    <input 
-                      type="text" 
-                      value={formData.title}
-                      onChange={e => setFormData({...formData, title: e.target.value})}
-                      className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#C5A059] outline-none text-black"
-                      placeholder="Contoh: SOP Pelayanan Jamaah"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Kategori</label>
-                    <select 
-                      value={formData.categoryId}
-                      onChange={e => setFormData({...formData, categoryId: e.target.value})}
-                      className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#C5A059] outline-none text-black bg-white"
-                    >
-                      <option value="">Pilih Kategori</option>
-                      {categories.map(cat => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
-                    </select>
-                  </div>
-                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Level</label>
-                    <select 
-                      value={formData.level}
-                      onChange={e => setFormData({...formData, level: e.target.value as any})}
-                      className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#C5A059] outline-none text-black bg-white"
-                    >
-                      <option value="basic">Basic</option>
-                      <option value="intermediate">Intermediate</option>
-                      <option value="advanced">Advanced</option>
-                    </select>
-                  </div>
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Deskripsi</label>
-                    <textarea 
-                      rows={4}
-                      value={formData.description}
-                      onChange={e => setFormData({...formData, description: e.target.value})}
-                      className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#C5A059] outline-none text-black"
-                    />
-                  </div>
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Cover Image (URL)</label>
-                    <input 
-                      type="text" 
-                      value={formData.coverImage}
-                      onChange={e => setFormData({...formData, coverImage: e.target.value})}
-                      className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#C5A059] outline-none text-black"
-                      placeholder="https://..."
-                    />
-                  </div>
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Status</label>
-                    <div className="flex space-x-4">
-                      <label className="flex items-center space-x-2 cursor-pointer">
-                        <input type="radio" checked={formData.status === 'draft'} onChange={() => setFormData({...formData, status: 'draft'})} className="text-[#C5A059]" />
-                        <span className="text-black">Draft</span>
-                      </label>
-                      <label className="flex items-center space-x-2 cursor-pointer">
-                        <input type="radio" checked={formData.status === 'active'} onChange={() => setFormData({...formData, status: 'active'})} className="text-[#C5A059]" />
-                        <span className="text-black">Active</span>
-                      </label>
-                    </div>
-                  </div>
+                    <div className="md:col-span-2"><label className="block text-sm font-semibold text-gray-700 mb-2">Judul Kursus</label><input type="text" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#C5A059] outline-none text-black placeholder:text-gray-400" placeholder="Contoh: SOP Pelayanan Jamaah" disabled={isLoading}/></div>
+                    <div><label className="block text-sm font-semibold text-gray-700 mb-2">Kategori</label><select value={formData.categoryId} onChange={e => setFormData({...formData, categoryId: e.target.value})} className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#C5A059] outline-none text-black bg-white" disabled={isLoading}><option value="">Pilih Kategori</option>{categories.map(cat => <option key={cat.id} value={cat.id}>{cat.name}</option>)}</select></div>
+                    <div><label className="block text-sm font-semibold text-gray-700 mb-2">Level</label><select value={formData.level} onChange={e => setFormData({...formData, level: e.target.value as any})} className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#C5A059] outline-none text-black bg-white" disabled={isLoading}><option value="basic">Basic</option><option value="intermediate">Intermediate</option><option value="advanced">Advanced</option></select></div>
+                    <div className="md:col-span-2"><label className="block text-sm font-semibold text-gray-700 mb-2">Deskripsi</label><textarea rows={4} value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#C5A059] outline-none text-black placeholder:text-gray-400" placeholder="Jelaskan tentang kursus ini..." disabled={isLoading} /></div>
+                    <div className="md:col-span-2"><label className="block text-sm font-semibold text-gray-700 mb-2">Cover Image (URL)</label><input type="text" value={formData.coverImage} onChange={e => setFormData({...formData, coverImage: e.target.value})} className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#C5A059] outline-none text-black placeholder:text-gray-400" placeholder="https://..." disabled={isLoading}/></div>
+                    <div className="md:col-span-2"><label className="block text-sm font-semibold text-gray-700 mb-2">Status</label><div className="flex space-x-4"><label className="flex items-center space-x-2 cursor-pointer"><input type="radio" checked={formData.status === 'draft'} onChange={() => setFormData({...formData, status: 'draft'})} className="text-[#C5A059]" disabled={isLoading} /><span className="text-black">Draft</span></label><label className="flex items-center space-x-2 cursor-pointer"><input type="radio" checked={formData.status === 'active'} onChange={() => setFormData({...formData, status: 'active'})} className="text-[#C5A059]" disabled={isLoading} /><span className="text-black">Active</span></label></div></div>
                 </div>
               ) : (
                 <div className="max-w-4xl mx-auto space-y-6">
-                  {/* Sections List */}
                   {formData.sections?.map((section, sIndex) => (
                     <div key={section.id} className="bg-white border rounded-xl shadow-sm overflow-hidden">
                       <div className="bg-gray-50 p-4 border-b flex items-center justify-between">
-                        <div className="flex items-center gap-3 flex-1">
-                          <span className="font-bold text-gray-500">BAB {sIndex + 1}</span>
-                          <input 
-                            type="text" 
-                            value={section.title} 
-                            onChange={(e) => updateSectionTitle(sIndex, e.target.value)}
-                            className="bg-transparent border-b border-dashed border-gray-400 focus:border-[#C5A059] outline-none font-semibold text-black flex-1"
-                            placeholder="Judul Bab"
-                          />
-                        </div>
-                        <button onClick={() => deleteSection(sIndex)} className="text-red-500 hover:bg-red-50 p-2 rounded"><Trash2 size={18}/></button>
+                        <div className="flex items-center gap-3 flex-1"><span className="font-bold text-gray-500">BAB {sIndex + 1}</span><input type="text" value={section.title} onChange={(e) => updateSectionTitle(sIndex, e.target.value)} className="bg-transparent border-b border-dashed border-gray-400 focus:border-[#C5A059] outline-none font-semibold text-black flex-1 placeholder:text-gray-400" placeholder="Judul Bab" disabled={isLoading}/></div>
+                        <button onClick={() => deleteSection(sIndex)} disabled={isLoading} className="text-red-500 hover:bg-red-50 p-2 rounded"><Trash2 size={18}/></button>
                       </div>
-
                       <div className="p-4 space-y-3">
                         {section.lessons.map((lesson) => (
                           <div key={lesson.id} className="flex items-center p-3 bg-gray-100 rounded border group">
-                             <div className="w-10 h-10 bg-[#C5A059]/10 text-[#C5A059] flex items-center justify-center rounded mr-3 shrink-0">
-                              {lesson.contentType === 'youtube' && <Youtube size={20} />}
-                              {lesson.contentType === 'video' && <Video size={20} />}
-                              {lesson.contentType === 'text' && <BookText size={20} />}
-                            </div>
+                            <div className="w-10 h-10 bg-[#C5A059]/10 text-[#C5A059] flex items-center justify-center rounded mr-3 shrink-0">{lesson.contentType === 'youtube' ? <Youtube size={20} /> : <BookText size={20} />}</div>
                             <div className="flex-1">
                               <h4 className="font-bold text-black text-sm">{lesson.title}</h4>
-                              <div className="text-xs text-gray-500 flex gap-2 mt-1">
-                                <span>{lesson.duration || 'N/A'} menit</span> • <span className="capitalize">{lesson.contentType}</span>
-                              </div>
+                              <div className="text-xs text-gray-500 flex gap-2 mt-1"><span>{lesson.duration || 'N/A'} menit</span> • <span className="capitalize">{lesson.contentType}</span></div>
                             </div>
-                             <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <button onClick={() => handleStartEditLesson(lesson, section.id)} className="p-1.5 text-blue-600 hover:bg-blue-100 rounded"><Edit size={16}/></button>
-                              <button onClick={() => handleDeleteLesson(lesson.id, section.id)} className="p-1.5 text-red-600 hover:bg-red-100 rounded"><Trash2 size={16}/></button>
+                            <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button onClick={() => handleStartEditLesson(lesson, section.id)} disabled={isLoading} className="p-1.5 text-blue-600 hover:bg-blue-100 rounded"><Edit size={16}/></button>
+                              <button onClick={() => handleDeleteLesson(lesson.id, section.id)} disabled={isLoading} className="p-1.5 text-red-600 hover:bg-red-100 rounded"><Trash2 size={16}/></button>
                             </div>
                           </div>
                         ))}
-
-                        {/* Add/Edit Lesson Area */}
                         {activeSectionId === section.id ? (
                           <div className="border-2 border-dashed border-[#C5A059] rounded-lg p-4 bg-[#FFF8E7]/30 mt-4">
                             <h4 className="font-bold text-gray-800 mb-3 text-sm">{editingLessonId ? 'Edit Materi' : 'Tambah Materi'}</h4>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
-                              <input 
-                                type="text" placeholder="Judul Materi" className="border p-2 rounded text-sm text-black"
-                                value={tempLesson.title} onChange={e => setTempLesson({...tempLesson, title: e.target.value})}
-                              />
-                               <select 
-                                className="border p-2 rounded text-sm bg-white text-black"
-                                value={tempLesson.contentType} onChange={e => setTempLesson({...tempLesson, contentType: e.target.value as any})}
-                              >
+                              <input type="text" placeholder="Judul Materi" className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#C5A059] outline-none text-black placeholder:text-gray-400" value={tempLesson.title} onChange={e => setTempLesson({...tempLesson, title: e.target.value})} disabled={isLoading}/>
+                               <select className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#C5A059] outline-none text-black bg-white" value={tempLesson.contentType} onChange={e => setTempLesson({...tempLesson, contentType: e.target.value as any, url: '', textContent: ''})} disabled={isLoading}>
                                 <option value="youtube">Link Youtube</option>
-                                <option value="video">Link Video (GDrive)</option>
                                 <option value="text">Artikel Teks</option>
                               </select>
                             </div>
-                            
-                            {/* Conditional Inputs */}
-                            { (tempLesson.contentType === 'youtube' || tempLesson.contentType === 'video') &&
-                              <div className="grid grid-cols-2 gap-3 mb-3">
-                                 <input 
-                                  type="text" placeholder="Durasi (menit)" className="border p-2 rounded text-sm text-black"
-                                  value={tempLesson.duration} onChange={e => setTempLesson({...tempLesson, duration: e.target.value})}
-                                />
-                                <input 
-                                  type="text" placeholder="URL Video" className="border p-2 rounded text-sm flex-1 text-black"
-                                  value={tempLesson.url} onChange={e => setTempLesson({...tempLesson, url: e.target.value})}
-                                />
-                              </div>
-                            }
-                            { tempLesson.contentType === 'text' &&
-                              <textarea 
-                                placeholder="Tulis artikel di sini..." rows={5} className="border p-2 rounded text-sm w-full text-black"
-                                value={tempLesson.textContent} onChange={e => setTempLesson({...tempLesson, textContent: e.target.value})}
-                              />
-                            }
-                            
-                            {/* Attachments */}
-                            <div className="my-3">
-                              <label className="text-xs font-bold text-gray-600 block mb-1">Lampiran (Opsional)</label>
-                              {tempLesson.attachments?.map((att, i) => (
-                                <div key={i} className="flex items-center text-xs bg-white border p-1 rounded mb-1 w-fit">
-                                  <LinkIcon size={12} className="mr-1"/> {att.name}
-                                </div>
-                              ))}
-                              <div className="flex gap-2 mt-1">
-                                <input placeholder="Nama File" className="border p-1.5 rounded text-xs text-black" value={tempAttachment.name} onChange={e => setTempAttachment({...tempAttachment, name: e.target.value})} />
-                                <input placeholder="Link File (Drive/Docs)" className="border p-1.5 rounded text-xs flex-1 text-black" value={tempAttachment.url} onChange={e => setTempAttachment({...tempAttachment, url: e.target.value})} />
-                                <button onClick={addAttachmentToTempLesson} className="px-2 py-1 bg-gray-200 rounded text-xs hover:bg-gray-300 text-black">Add</button>
-                              </div>
+                            {tempLesson.contentType === 'youtube' && <div className="grid grid-cols-2 gap-3 mb-3"><input type="text" placeholder="Durasi (menit)" className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#C5A059] outline-none text-black placeholder:text-gray-400" value={tempLesson.duration} onChange={e => setTempLesson({...tempLesson, duration: e.target.value})} disabled={isLoading}/><input type="text" placeholder="URL Youtube" className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#C5A059] outline-none text-black placeholder:text-gray-400" value={tempLesson.url} onChange={e => setTempLesson({...tempLesson, url: e.target.value})} disabled={isLoading}/></div>}
+                            {tempLesson.contentType === 'text' && <textarea placeholder="Tulis artikel di sini..." rows={5} className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#C5A059] outline-none text-black placeholder:text-gray-400 w-full" value={tempLesson.textContent} onChange={e => setTempLesson({...tempLesson, textContent: e.target.value})} disabled={isLoading}/>}
+                            <div className="my-3 space-y-2">
+                              <label className="text-xs font-bold text-gray-600 block">Lampiran (Opsional)</label>
+                              <input placeholder="Nama File Lampiran" className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#C5A059] outline-none text-black placeholder:text-gray-400 w-full text-sm" value={tempLesson.attachmentName || ''} onChange={e => setTempLesson(prev => ({...prev, attachmentName: e.target.value}))} disabled={isLoading} />
+                              <input placeholder="URL File (Drive, Docs, dll)" className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#C5A059] outline-none text-black placeholder:text-gray-400 w-full text-sm" value={tempLesson.attachmentUrl || ''} onChange={e => setTempLesson(prev => ({...prev, attachmentUrl: e.target.value}))} disabled={isLoading} />
                             </div>
-
                             <div className="flex gap-2 justify-end">
-                              <button onClick={handleCancelEditLesson} className="px-3 py-1.5 text-xs text-gray-600 border rounded">Batal</button>
-                              <button onClick={() => handleSaveLesson(section.id)} className="px-3 py-1.5 text-xs bg-[#C5A059] text-black rounded font-bold">{editingLessonId ? 'Update Materi' : 'Simpan Materi'}</button>
+                              <button onClick={handleCancelEditLesson} disabled={isLoading} className="px-3 py-1.5 text-xs text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50 font-semibold">Batal</button>
+                              <button onClick={() => handleSaveLesson(section.id)} disabled={isLoading} className="px-3 py-1.5 text-xs bg-[#C5A059] text-black rounded font-bold hover:bg-[#B08F4A]">{editingLessonId ? 'Update Materi' : 'Simpan Materi'}</button>
                             </div>
                           </div>
                         ) : (
-                          <button onClick={() => setActiveSectionId(section.id)} className="w-full py-2 border border-dashed border-gray-300 text-gray-500 rounded hover:border-[#C5A059] hover:text-[#C5A059] text-sm flex items-center justify-center transition-colors">
-                            <Plus size={16} className="mr-1" /> Tambah Materi
-                          </button>
+                          <button onClick={() => setActiveSectionId(section.id)} disabled={isLoading} className="w-full py-2 border border-dashed border-gray-300 text-gray-600 rounded hover:border-[#C5A059] hover:text-[#C5A059] text-sm flex items-center justify-center transition-colors font-semibold"><Plus size={16} className="mr-1" /> Tambah Materi</button>
                         )}
                       </div>
                     </div>
                   ))}
-                  
-                  <button onClick={addSection} className="w-full py-3 bg-gray-100 text-gray-600 rounded-xl hover:bg-gray-200 font-semibold border border-dashed border-gray-300 flex items-center justify-center">
-                    <Plus size={20} className="mr-2" /> Tambah Bab Baru
-                  </button>
+                  <button onClick={addSection} disabled={isLoading} className="w-full py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 font-semibold border border-dashed border-gray-300 flex items-center justify-center"><Plus size={20} className="mr-2" /> Tambah Bab Baru</button>
                 </div>
               )}
             </div>
-
-            {/* Footer */}
-            <div className="p-6 border-t border-gray-100 flex justify-end space-x-3 bg-white rounded-b-xl">
-              {currentStep === 2 && (
-                <button onClick={() => setCurrentStep(1)} className="px-6 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-semibold">
-                  Kembali
-                </button>
-              )}
-              {currentStep === 1 ? (
-                <button onClick={() => setCurrentStep(2)} className="px-6 py-2.5 bg-[#C5A059] text-black rounded-lg hover:bg-[#B08F4A] font-bold">
-                  Lanjut: Kurikulum
-                </button>
-              ) : (
-                <button onClick={handleSaveCourse} className="px-6 py-2.5 bg-[#C5A059] text-black rounded-lg hover:bg-[#B08F4A] font-bold flex items-center">
-                  <Save size={18} className="mr-2" /> Simpan Kursus
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* --- PREVIEW MODAL --- */}
-      {showPreview && previewData && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[60] p-4 overflow-y-auto">
-          <div className="bg-white rounded-xl w-full max-w-4xl min-h-[80vh] shadow-2xl relative flex flex-col">
-            <button 
-              onClick={() => setShowPreview(false)} 
-              className="absolute top-4 right-4 z-10 bg-black/50 p-2 rounded-full text-white hover:bg-black/70"
-            >
-              <X size={24} />
-            </button>
-
-            {/* Preview Header */}
-            <div className="h-64 relative bg-gray-900">
-              {previewData.coverImage ? (
-                <img src={previewData.coverImage} className="w-full h-full object-cover opacity-60" />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center bg-gradient-to-r from-gray-800 to-gray-900 text-white text-5xl">📚</div>
-              )}
-              <div className="absolute bottom-0 left-0 p-8 w-full bg-gradient-to-t from-black/80 to-transparent">
-                <span className="bg-[#C5A059] text-black text-xs font-bold px-2 py-1 rounded mb-2 inline-block">
-                  {previewData.categoryName}
-                </span>
-                <h1 className="text-3xl font-bold text-white mb-2">{previewData.title}</h1>
-                <p className="text-gray-200 text-sm max-w-2xl">{previewData.description}</p>
-              </div>
-            </div>
-
-            {/* Preview Content */}
-            <div className="flex-1 p-8 bg-[#F8F9FA]">
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Main Content Area */}
-                <div className="lg:col-span-2 space-y-6">
-                  <div className="bg-white p-6 rounded-xl border shadow-sm">
-                    <h3 className="font-bold text-lg text-black mb-4">Tentang Kursus Ini</h3>
-                    <p className="text-gray-600 leading-relaxed text-sm">
-                      {previewData.description || "Tidak ada deskripsi detail."}
-                    </p>
-                  </div>
-                  
-                  <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
-                    <div className="p-4 border-b bg-gray-50 font-bold text-black">Kurikulum Pembelajaran</div>
-                    <div>
-                      {previewData.sections?.map((section, idx) => (
-                        <div key={idx} className="border-b last:border-0">
-                          <div className="bg-gray-50/50 px-4 py-3 font-semibold text-gray-700 text-sm flex justify-between items-center">
-                            <span>{section.title}</span>
-                            <span className="text-xs font-normal text-gray-500">{section.lessons.length} Materi</span>
-                          </div>
-                          <div className="divide-y">
-                            {section.lessons.map((lesson, lIdx) => (
-                              <div key={lIdx} className="p-4 flex items-center hover:bg-gray-50 transition-colors cursor-default">
-                                <div className="w-8 h-8 rounded-full bg-[#C5A059]/10 text-[#C5A059] flex items-center justify-center mr-4 shrink-0">
-                                  {lesson.contentType === 'youtube' ? <Youtube size={16} /> : 
-                                   lesson.contentType === 'video' ? <Video size={16} /> :
-                                   <BookText size={16} />}
-                                </div>
-                                <div className="flex-1">
-                                  <p className="text-sm font-medium text-black">{lesson.title}</p>
-                                  <div className="flex items-center gap-3 mt-1">
-                                    <span className="text-xs text-gray-500 flex items-center gap-1"><Clock size={10} /> {lesson.duration} menit</span>
-                                    {lesson.attachments?.length > 0 && (
-                                      <span className="text-xs text-blue-600 flex items-center gap-1"><LinkIcon size={10} /> {lesson.attachments.length} file</span>
-                                    )}
-                                  </div>
-                                </div>
-                                {lesson.forceComplete && <div className="text-[10px] border border-orange-200 text-orange-600 px-2 py-0.5 rounded bg-orange-50">Wajib</div>}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Sidebar Info */}
-                <div className="space-y-6">
-                   <div className="bg-white p-6 rounded-xl border shadow-sm">
-                    <h4 className="font-bold text-gray-800 mb-4">Informasi Kursus</h4>
-                    <div className="space-y-3">
-                       <div className="flex justify-between text-sm">
-                        <span className="text-gray-500 flex items-center"><Droplets size={14} className="mr-2"/>Level</span>
-                        <span className="font-medium text-black capitalize">{previewData.level}</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-500">Total Video</span>
-                        <span className="font-medium text-black">{previewData.totalVideos} Video</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-500">Total Peserta</span>
-                        <span className="font-medium text-black">{previewData.totalStudents} Orang</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-500">Status</span>
-                        <span className={`px-2 py-0.5 rounded text-xs font-bold ${previewData.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
-                          {previewData.status === 'active' ? 'Published' : 'Draft'}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+            <div className="p-6 border-t flex justify-end space-x-3 bg-white rounded-b-xl">
+              {currentStep === 2 && <button onClick={() => setCurrentStep(1)} disabled={isLoading} className="px-6 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-semibold">Kembali</button>}
+              {currentStep === 1 ? <button onClick={() => setCurrentStep(2)} disabled={isLoading} className="px-6 py-2.5 bg-[#C5A059] text-black rounded-lg hover:bg-[#B08F4A] font-bold">Lanjut: Kurikulum</button>
+               : <button onClick={handleSaveCourse} disabled={isLoading} className="px-6 py-2.5 bg-[#C5A059] text-black rounded-lg hover:bg-[#B08F4A] font-bold flex items-center disabled:opacity-50 disabled:cursor-not-allowed">{isLoading ? <Loader2 size={18} className="mr-2 animate-spin" /> : <Save size={18} className="mr-2" />} {isLoading ? 'Menyimpan...' : 'Simpan Kursus'}</button>}
             </div>
           </div>
         </div>
