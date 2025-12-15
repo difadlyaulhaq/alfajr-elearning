@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { BookOpen, Clock, PlayCircle } from "lucide-react";
+import { BookOpen, Clock, PlayCircle, Link as LinkIcon } from "lucide-react";
 import { getCoursePageData } from "@/lib/data/courses";
 import { Course, Section, Lesson } from "@/types";
 
@@ -41,7 +41,6 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ c
             <div className="p-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Main Content */}
                 <div className="lg:col-span-2">
-                    {/* Start Button for Mobile */}
                     {firstLessonId && (
                         <Link 
                             href={`/learning/course/${course.id}/lesson/${firstLessonId}`} 
@@ -73,20 +72,36 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ c
                                         {section.lessons?.map((lesson, lIndex) => (
                                             <li 
                                                 key={lesson.id} 
-                                                className="p-4 flex items-center justify-between hover:bg-gray-50/50"
+                                                className="p-4 hover:bg-gray-50/50"
                                             >
-                                                <div className="flex items-center">
-                                                    <div className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 text-gray-500 mr-4 font-mono text-sm">
-                                                        {lIndex + 1}
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex items-center">
+                                                        <div className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 text-gray-500 mr-4 font-mono text-sm shrink-0">
+                                                            {lIndex + 1}
+                                                        </div>
+                                                        <span className="font-medium text-black">
+                                                            {lesson.title}
+                                                        </span>
                                                     </div>
-                                                    <span className="font-medium text-black">
-                                                        {lesson.title}
-                                                    </span>
+                                                    <div className="flex items-center text-sm text-gray-500">
+                                                        <Clock size={14} className="mr-1.5" />
+                                                        {lesson.duration || '10'} menit
+                                                    </div>
                                                 </div>
-                                                <div className="flex items-center text-sm text-gray-500">
-                                                    <Clock size={14} className="mr-1.5" />
-                                                    {lesson.duration || '10'} menit
-                                                </div>
+                                                {/* Attachment Link */}
+                                                {lesson.attachmentUrl && (
+                                                    <div className="mt-3 pl-12">
+                                                        <a
+                                                            href={lesson.attachmentUrl}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="flex items-center text-sm text-blue-600 hover:text-blue-800"
+                                                        >
+                                                            <LinkIcon size={14} className="mr-2" />
+                                                            <span>{lesson.attachmentName || 'Lihat Lampiran'}</span>
+                                                        </a>
+                                                    </div>
+                                                )}
                                             </li>
                                         ))}
                                     </ul>

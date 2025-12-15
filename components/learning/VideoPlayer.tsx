@@ -1,16 +1,19 @@
+// components/learning/VideoPlayer.tsx
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { Lesson } from "@/types";
 import {
   ArrowLeft,
   CheckCircle,
   Loader2,
-  Lock,
-  PlayCircle,
+  Download,
+  Link as LinkIcon,
 } from "lucide-react";
+import toast from "react-hot-toast";
 
 interface VideoPlayerProps {
   courseId: string;
@@ -25,137 +28,193 @@ export function VideoPlayer({
   lesson,
   prevLesson,
   nextLesson,
-  isCompleted,
+  isCompleted: initialCompleted,
 }: VideoPlayerProps) {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
+  const router = useRouter();
+  
+  const [isVideoCompleted, setIsVideoCompleted] = useState(initialCompleted);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [player, setPlayer] = useState<YT.Player | null>(null);
+  const [progressInterval, setProgressInterval] = useState<NodeJS.Timeout | null>(null);
 
-  const getYouTubeEmbedUrl = (url: string) => {
-    if (!url) return null;
-    const regExp =
-      /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
-    const match = url.match(regExp);
-    const videoId = match && match[2].length === 11 ? match[2] : null;
-
-    if (videoId) {
-      const params = new URLSearchParams({
-        rel: "0",
-        showinfo: "0",
-        iv_load_policy: "3",
-        modestbranding: "1",
-        controls: "1",
-        disablekb: "0",
-      });
-      return `https://www.youtube.com/embed/${videoId}?${params.toString()}`;
+  useEffect(() => {
+    if (lesson.contentType === 'text') {
+      setIsVideoCompleted(true);
+    } else {
+      setIsVideoCompleted(initialCompleted);
     }
-    return null;
+  }, [lesson.id, initialCompleted, lesson.contentType]);
+
+  useEffect(() => {
+    return () => {
+      if (progressInterval) {
+        clearInterval(progressInterval);
+      }
+    };
+  }, [progressInterval]);
+
+  const getYouTubeId = (url: string) => {
+    if (!url) return null;
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+    const match = url.match(regExp);
+    return match && match[2].length === 11 ? match[2] : null;
   };
 
-  const embedUrl = useMemo(() => {
+  const videoId = useMemo(() => {
     if (lesson.contentType === "youtube") {
-      return getYouTubeEmbedUrl(lesson.url);
+      return getYouTubeId(lesson.url);
     }
-    return lesson.url;
-  }, [lesson]);
+    return null;
+  }, [lesson.url, lesson.contentType]);
+
+  const onPlayerStateChange = (event: YT.OnStateChangeEvent) => {
+    if (event.data === YT.PlayerState.PLAYING) {
+      if (progressInterval) clearInterval(progressInterval);
+      const interval = setInterval(() => {
+        if (player) {
+          const currentTime = player.getCurrentTime();
+          const duration = player.getDuration();
+          if (duration > 0 && (currentTime / duration) >= 0.9) {
+            setIsVideoCompleted(true);
+            if(interval) clearInterval(interval);
+          }
+        }
+      }, 1000);
+      setProgressInterval(interval);
+    } else {
+      if (progressInterval) clearInterval(progressInterval);
+    }
+    if (event.data === YT.PlayerState.ENDED) {
+      setIsVideoCompleted(true);
+    }
+  };
+
+  useEffect(() => {
+    if (!videoId) return;
+    const onYouTubeIframeAPIReady = () => {
+      if (player) {
+         try { player.destroy(); } catch(e) {} 
+      }
+      if (progressInterval) clearInterval(progressInterval);
+      const newPlayer = new YT.Player(`Youtubeer-${lesson.id}`, {
+        height: '100%',
+        width: '100%',
+        videoId: videoId,
+        playerVars: { 'playsinline': 1, 'controls': 1, 'rel': 0, 'modestbranding': 1 },
+        events: { 'onStateChange': onPlayerStateChange }
+      });
+      setPlayer(newPlayer);
+    };
+    if (window.YT && window.YT.Player) {
+      onYouTubeIframeAPIReady();
+    } else {
+      (window as any).onYouTubeIframeAPIReady = onYouTubeIframeAPIReady;
+      if (!document.querySelector('script[src="https://www.youtube.com/iframe_api"]')) {
+        const tag = document.createElement('script');
+        tag.src = "https://www.youtube.com/iframe_api";
+        const firstScriptTag = document.getElementsByTagName('script')[0];
+        firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
+      }
+    }
+    return () => {
+       if (progressInterval) clearInterval(progressInterval);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [videoId, lesson.id]);
+
+  const handleMarkComplete = async () => {
+    if (!user || !isVideoCompleted) return;
+    setIsUpdating(true);
+    toast.loading('Menyimpan progress...');
+    try {
+      const res = await fetch('/api/progress/lesson', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.uid, courseId, lessonId: lesson.id })
+      });
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Gagal update progress');
+      }
+      const data = await res.json();
+      toast.dismiss();
+      toast.success('Progress berhasil disimpan!');
+      const isCourseCompleted = data.data.status === 'completed';
+      if (isCourseCompleted) {
+        router.push(`/learning/course/${courseId}/complete`);
+      } else if (nextLesson) {
+        router.push(`/learning/course/${courseId}/lesson/${nextLesson.id}`);
+      } else {
+        router.push('/learning/dashboard');
+      }
+      router.refresh();
+    } catch (error: any) {
+      console.error(error);
+      toast.dismiss();
+      toast.error(`Terjadi kesalahan: ${error.message}`);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+
 
   const watermarkAnimation = `
-    @keyframes float-watermark {
-      0% { transform: translate(0%, 0%); }
-      25% { transform: translate(10%, 20%); }
-      50% { transform: translate(25%, 5%); }
-      75% { transform: translate(5%, 25%); }
-      100% { transform: translate(0%, 0%); }
-    }
+    @keyframes float-watermark { 0% { transform: translate(0%, 0%); } 25% { transform: translate(10%, 20%); } 50% { transform: translate(25%, 5%); } 75% { transform: translate(5%, 25%); } 100% { transform: translate(0%, 0%); } }
   `;
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <Loader2 className="w-12 h-12 text-[#C5A059] animate-spin" />
-      </div>
-    );
+  if (authLoading) {
+    return <div className="flex items-center justify-center h-full"><Loader2 className="w-12 h-12 text-[#C5A059] animate-spin" /></div>;
   }
 
   return (
     <div className="flex-1 flex flex-col bg-[#F8F9FA]">
       <header className="bg-white p-4 border-b flex items-center justify-between sticky top-0 z-10">
         <div className="flex-1">
-          <Link
-            href={`/learning/course/${courseId}`}
-            className="text-sm text-gray-600 hover:text-black transition-colors flex items-center gap-2"
-          >
+          <Link href={`/learning/course/${courseId}`} className="text-sm text-gray-600 hover:text-black transition-colors flex items-center gap-2">
             <ArrowLeft size={16} /> Kembali ke Detail Kursus
           </Link>
-          <h1 className="text-xl font-bold text-black mt-1 truncate">
-            {lesson.title}
-          </h1>
-        </div>
-        <div className="hidden md:flex items-center gap-2">
-          {prevLesson && (
-            <Link
-              href={`/learning/course/${courseId}/lesson/${prevLesson.id}`}
-              className="px-4 py-2 text-sm font-semibold text-gray-700 bg-white border rounded-lg hover:bg-gray-100"
-            >
-              Sebelumnya
-            </Link>
-          )}
-          {nextLesson && (
-            <Link
-              href={`/learning/course/${courseId}/lesson/${nextLesson.id}`}
-              className="px-4 py-2 text-sm font-semibold text-white bg-[#C5A059] rounded-lg hover:bg-amber-500"
-            >
-              Selanjutnya
-            </Link>
-          )}
+          <h1 className="text-xl font-bold text-black mt-1 truncate">{lesson.title}</h1>
         </div>
       </header>
 
       <div className="p-4 md:p-8 flex-1">
         {lesson.contentType === "text" ? (
           <div className="bg-white p-6 md:p-8 rounded-lg border">
-            <h2 className="text-2xl font-bold text-black mb-4">
-              {lesson.title}
-            </h2>
-            <div
-              className="prose prose-lg max-w-none text-black"
-              dangerouslySetInnerHTML={{ __html: lesson.textContent }}
-            />
+            <h2 className="text-2xl font-bold text-black mb-4">{lesson.title}</h2>
+            <div className="prose prose-lg max-w-none text-black" dangerouslySetInnerHTML={{ __html: lesson.textContent }} />
           </div>
         ) : (
-          <div
-            className="relative w-full bg-black rounded-lg overflow-hidden"
-            style={{ paddingTop: "56.25%" }}
-            onContextMenu={(e) => e.preventDefault()}
-          >
+          <div className="relative w-full bg-black rounded-lg overflow-hidden" style={{ paddingTop: "56.25%" }} onContextMenu={(e) => e.preventDefault()}>
             <style>{watermarkAnimation}</style>
-            {embedUrl ? (
-              <iframe
-                src={embedUrl}
-                title={lesson.title}
-                frameBorder="0"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-                className="absolute top-0 left-0 w-full h-full"
-              />
-            ) : (
-              <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center text-white">
-                <p>URL video tidak valid atau tidak didukung.</p>
-              </div>
-            )}
+            <div id={`Youtubeer-${lesson.id}`} className="absolute top-0 left-0 w-full h-full" />
             {user && (
-              <div
-                className="absolute top-0 left-0 w-full h-full flex items-center justify-center pointer-events-none"
-                style={{
-                  animation: "float-watermark 20s infinite ease-in-out",
-                }}
-              >
-                <p
-                  className="text-white/20 font-sans text-xl md:text-2xl select-none"
-                  style={{ textShadow: "1px 1px 2px black" }}
-                >
-                  alfajrumroh
-                </p>
+              <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center pointer-events-none" style={{ animation: "float-watermark 20s infinite ease-in-out", zIndex: 10 }}>
+                <p className="text-white/20 font-sans text-xl md:text-2xl select-none" style={{ textShadow: "1px 1px 2px black" }}>alfajrumroh</p>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Attachments Section */}
+        {lesson.attachmentUrl && lesson.attachmentName && (
+          <div className="mt-6 bg-white p-6 rounded-lg border">
+            <h3 className="text-lg font-bold text-black mb-4 flex items-center gap-2">
+              <LinkIcon size={18} />
+              Materi Pendukung
+            </h3>
+            <div className="space-y-3">
+                <a
+                  href={lesson.attachmentUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center p-3 bg-gray-50 hover:bg-[#FFF8E7] border rounded-lg transition-colors"
+                >
+                  <Download size={20} className="text-[#C5A059] mr-4" />
+                  <span className="font-semibold text-black">{lesson.attachmentName}</span>
+                </a>
+            </div>
           </div>
         )}
 
@@ -163,19 +222,16 @@ export function VideoPlayer({
           <div>
             <h2 className="text-lg font-bold text-black">{lesson.title}</h2>
             <p className="text-sm text-gray-500">
-              Tonton video hingga selesai untuk melanjutkan.
+              {isVideoCompleted ? "Materi selesai. Silakan lanjut ke materi berikutnya." : lesson.contentType === 'text' ? "Silakan klik tombol di samping untuk melanjutkan." : "Tonton video hingga selesai untuk melanjutkan."}
             </p>
           </div>
           <button
-            disabled={isCompleted}
-            className={`flex items-center gap-2 px-5 py-2.5 font-semibold text-white rounded-lg ${
-              isCompleted
-                ? "bg-green-600"
-                : "bg-gray-400 cursor-not-allowed"
-            }`}
+            onClick={handleMarkComplete}
+            disabled={!isVideoCompleted || isUpdating}
+            className={`flex items-center gap-2 px-5 py-2.5 font-semibold text-white rounded-lg transition-all ${isVideoCompleted && !isUpdating ? "bg-green-600 hover:bg-green-700 shadow-md" : "bg-gray-400 cursor-not-allowed"}`}
           >
-            <CheckCircle size={18} />
-            {isCompleted ? "Selesai" : "Tandai Selesai"}
+            {isUpdating ? <Loader2 className="animate-spin" size={18} /> : <CheckCircle size={18} />}
+            {isUpdating ? "Menyimpan..." : (nextLesson ? "Selesai & Lanjut" : "Selesai Kursus")}
           </button>
         </div>
       </div>

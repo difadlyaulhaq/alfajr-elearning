@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@next/eslint-plugin-next": "^16.0.7",
+    "@radix-ui/react-dialog": "^1.1.15",
     "firebase": "^12.6.0",
     "firebase-admin": "^13.6.0",
     "lucide-react": "^0.555.0",
@@ -19,10 +20,12 @@
     "react-hot-toast": "^2.6.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.57.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/youtube": "^0.1.2",
     "eslint": "^9",
     "eslint-config-next": "^16.0.7",
     "tailwindcss": "^4",
