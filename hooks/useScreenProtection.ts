@@ -1,7 +1,7 @@
 // hooks/useScreenProtection.ts
 "use client";
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 
 interface ScreenProtectionOptions {
   enableWatermark?: boolean;
@@ -12,6 +12,7 @@ interface ScreenProtectionOptions {
   watermarkText?: string;
   onScreenshotAttempt?: () => void;
   onRecordingDetected?: () => void;
+  videoElementRef?: React.RefObject<HTMLVideoElement>;
 }
 
 export const useScreenProtection = (options: ScreenProtectionOptions = {}) => {
@@ -24,167 +25,184 @@ export const useScreenProtection = (options: ScreenProtectionOptions = {}) => {
     watermarkText = 'PROTECTED CONTENT',
     onScreenshotAttempt,
     onRecordingDetected,
+    videoElementRef,
   } = options;
 
   const [isBlurred, setIsBlurred] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const attemptCountRef = useRef(0);
-  const blackScreenTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastBlurTimeRef = useRef(0);
+  const blurDebounceRef = useRef<NodeJS.Timeout | null>(null);
+  const wasPlayingRef = useRef(false);
 
+  // Improved blur detection with debounce
+  const handleBlur = useCallback(() => {
+    if (!enableBlurOnFocusLoss) return;
+    
+    // Immediately apply blur
+    setIsBlurred(true);
+
+    // Clear any pending debounced focus actions, as blur is now active
+    if (blurDebounceRef.current) {
+        clearTimeout(blurDebounceRef.current);
+        blurDebounceRef.current = null;
+    }
+  }, [enableBlurOnFocusLoss]);
+
+  const handleFocus = useCallback(() => {
+    if (!enableBlurOnFocusLoss) return;
+
+    // Clear debounce
+    if (blurDebounceRef.current) {
+      clearTimeout(blurDebounceRef.current);
+    }
+
+    // Restore UI after slight delay
+    setTimeout(() => {
+      setIsBlurred(false);
+    }, 300);
+  }, [enableBlurOnFocusLoss, videoElementRef]);
+
+  // Enhanced keyboard detection
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!enableKeyboardBlock) return;
 
+      let isScreenshotAttempt = false;
+
+      // PrintScreen key
       if (e.key === 'PrintScreen') {
-        e.preventDefault();
-        attemptCountRef.current++;
-        onScreenshotAttempt?.();
-        console.warn('Screenshot attempt detected!');
+        isScreenshotAttempt = true;
       }
 
-      if (e.key === 's' && e.shiftKey && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault();
-        attemptCountRef.current++;
-        onScreenshotAttempt?.();
+      // Windows Snipping Tool (Win + Shift + S)
+      if (e.key === 's' && e.shiftKey && e.metaKey) {
+        isScreenshotAttempt = true;
       }
 
+      // Mac screenshots (Cmd + Shift + 3/4/5)
       if (e.metaKey && e.shiftKey && ['3', '4', '5'].includes(e.key)) {
-        e.preventDefault();
-        attemptCountRef.current++;
-        onScreenshotAttempt?.();
+        isScreenshotAttempt = true;
       }
 
+      // Chrome DevTools shortcuts
       if (
         e.key === 'F12' ||
         (e.ctrlKey && e.shiftKey && ['I', 'J', 'C'].includes(e.key.toUpperCase())) ||
         (e.metaKey && e.altKey && ['I', 'J', 'C'].includes(e.key.toUpperCase()))
       ) {
         if (enableDevToolsDetection) {
-          e.preventDefault();
-          attemptCountRef.current++;
+          isScreenshotAttempt = true;
         }
+      }
+
+      if (isScreenshotAttempt) {
+        e.preventDefault();
+        attemptCountRef.current++;
+        
+        // Clear clipboard
+        try {
+          navigator.clipboard.writeText('').catch(() => {});
+        } catch (error) {
+          // Clipboard API not available
+        }
+        
+        onScreenshotAttempt?.();
       }
     };
 
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [enableKeyboardBlock, enableDevToolsDetection, onScreenshotAttempt]);
+
+  // Visibility change detection
+  useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.hidden) {
-        if (enableBlurOnFocusLoss) {
-          setIsBlurred(true);
-        }
+        handleBlur();
       } else {
-        setTimeout(() => {
-          setIsBlurred(false);
-        }, 500);
+        handleFocus();
       }
     };
 
-    const handleBlur = () => {
-      if (enableBlurOnFocusLoss) {
-        setIsBlurred(true);
-      }
-    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [handleBlur, handleFocus]);
 
-    const handleFocus = () => {
-      if (enableBlurOnFocusLoss) {
-        setTimeout(() => setIsBlurred(false), 300);
-      }
-    };
+  // Window focus/blur events
+  useEffect(() => {
+    window.addEventListener('blur', handleBlur);
+    window.addEventListener('focus', handleFocus);
 
-    // const detectScreenRecording = async () => {
-    //   try {
-    //     if (navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) {
-    //       // Reduced interval for better performance
-    //       const checkRecording = setInterval(() => {
-    //         if ('permissions' in navigator) {
-    //           navigator.permissions
-    //             .query({ name: 'display-capture' as PermissionName })
-    //             .then((permissionStatus) => {
-    //               if (permissionStatus.state === 'granted') {
-    //                 setIsRecording(true);
-    //                 onRecordingDetected?.();
-    //               } else {
-    //                 setIsRecording(false);
-    //               }
-    //             })
-    //             .catch(() => {});
-    //             }
-    //       }, 5000); // Increased to 5s for better performance
-    //       return () => clearInterval(checkRecording);
-    //     }
-    //   } catch (error) {
-    //     console.error('Screen recording detection error:', error);
-    //   }
-    // };
-
-    const detectDevTools = () => {
-      if (!enableDevToolsDetection) return;
-      const threshold = 160;
-      const checkDevTools = () => {
-        if (
-          window.outerWidth - window.innerWidth > threshold ||
-          window.outerHeight - window.innerHeight > threshold
-        ) {
-          attemptCountRef.current++;
-        }
-      };
-      const interval = setInterval(checkDevTools, 3000); // Reduced frequency
-      return () => clearInterval(interval);
+    return () => {
+      window.removeEventListener('blur', handleBlur);
+      window.removeEventListener('focus', handleFocus);
     };
+  }, [handleBlur, handleFocus]);
 
-    const handleCopy = (e: ClipboardEvent) => {
-      attemptCountRef.current++;
-      // Removed onScreenshotAttempt?.(); to prevent false positives when copying text.
-    };
+  // Context menu blocking
+  useEffect(() => {
+    if (!enableContextMenuBlock) return;
 
     const handleContextMenu = (e: MouseEvent) => {
-      if (enableContextMenuBlock) {
+      // Only block on protected elements
+      const target = e.target as HTMLElement;
+      if (target.closest('[data-protected="true"]')) {
         e.preventDefault();
         attemptCountRef.current++;
       }
     };
 
-    const handleDragStart = (e: DragEvent) => {
-      e.preventDefault();
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    window.addEventListener('blur', handleBlur);
-    window.addEventListener('focus', handleFocus);
     document.addEventListener('contextmenu', handleContextMenu);
-    document.addEventListener('copy', handleCopy);
-    document.addEventListener('dragstart', handleDragStart);
+    return () => document.removeEventListener('contextmenu', handleContextMenu);
+  }, [enableContextMenuBlock]);
 
-    // const cleanupRecording = detectScreenRecording(); // Disabled due to false positives
-    const cleanupDevTools = detectDevTools();
+  // DevTools detection
+  useEffect(() => {
+    if (!enableDevToolsDetection) return;
 
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('blur', handleBlur);
-      window.removeEventListener('focus', handleFocus);
-      document.removeEventListener('contextmenu', handleContextMenu);
-      document.removeEventListener('copy', handleCopy);
-      document.removeEventListener('dragstart', handleDragStart);
-      
-      // if (cleanupRecording) cleanupRecording.then(fn => fn && fn()); // Disabled cleanup for recording detection
-      if (cleanupDevTools) cleanupDevTools();
-      
-      // Clean up black screen timeout
-      if (blackScreenTimeoutRef.current) {
-        clearTimeout(blackScreenTimeoutRef.current);
+    const threshold = 160;
+    let devToolsOpen = false;
+
+    const checkDevTools = () => {
+      const widthThreshold = window.outerWidth - window.innerWidth > threshold;
+      const heightThreshold = window.outerHeight - window.innerHeight > threshold;
+
+      if ((widthThreshold || heightThreshold) && !devToolsOpen) {
+        devToolsOpen = true;
+        attemptCountRef.current++;
+        setIsBlurred(true);
+      } else if (!widthThreshold && !heightThreshold && devToolsOpen) {
+        devToolsOpen = false;
+        setIsBlurred(false);
       }
-      
-      // Reset styles
     };
-  }, [
-    enableKeyboardBlock,
-    enableBlurOnFocusLoss,
-    enableContextMenuBlock,
-    enableDevToolsDetection,
-    onScreenshotAttempt,
-    onRecordingDetected,
-  ]);
+
+    const interval = setInterval(checkDevTools, 1000);
+    return () => clearInterval(interval);
+  }, [enableDevToolsDetection]);
+
+  // Prevent drag operations
+  useEffect(() => {
+    const handleDragStart = (e: DragEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.closest('[data-protected="true"]')) {
+        e.preventDefault();
+      }
+    };
+
+    document.addEventListener('dragstart', handleDragStart);
+    return () => document.removeEventListener('dragstart', handleDragStart);
+  }, []);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (blurDebounceRef.current) {
+        clearTimeout(blurDebounceRef.current);
+      }
+    };
+  }, []);
 
   return {
     isBlurred,

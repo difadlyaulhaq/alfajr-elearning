@@ -1,32 +1,35 @@
 // components/shared/ScreenProtection.tsx
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useScreenProtection } from '@/hooks/useScreenProtection';
-import { AntiScreenshotOverlay } from './AntiScreenshotOverlay';
 import { Shield, Eye, EyeOff } from 'lucide-react';
 
 interface ScreenProtectionProps {
   children: React.ReactNode;
   watermarkText?: string;
+  userEmail?: string;
   enableWatermark?: boolean;
   enableBlurOnFocusLoss?: boolean;
   enableKeyboardBlock?: boolean;
   enableContextMenuBlock?: boolean;
   enableDevToolsDetection?: boolean;
   showWarningOnAttempt?: boolean;
+  videoElementRef?: React.RefObject<HTMLVideoElement>;
   className?: string;
 }
 
 export const ScreenProtection: React.FC<ScreenProtectionProps> = ({
   children,
-  watermarkText = 'ALFAJR E-LEARNING - PROTECTED',
+  watermarkText = 'ALFAJR E-LEARNING',
+  userEmail,
   enableWatermark = true,
-  enableBlurOnFocusLoss = false,
+  enableBlurOnFocusLoss = true,
   enableKeyboardBlock = true,
   enableContextMenuBlock = true,
   enableDevToolsDetection = true,
   showWarningOnAttempt = true,
+  videoElementRef,
   className = '',
 }) => {
   const [showWarning, setShowWarning] = useState(false);
@@ -34,7 +37,6 @@ export const ScreenProtection: React.FC<ScreenProtectionProps> = ({
   const [watermarkPositions, setWatermarkPositions] = useState<
     Array<{ top: number; left: number; rotation: number; opacity: number }>
   >([]);
-  const [isScreenshotting, setIsScreenshotting] = useState(false);
 
   const { isBlurred, isRecording, attemptCount } = useScreenProtection({
     enableWatermark,
@@ -43,17 +45,14 @@ export const ScreenProtection: React.FC<ScreenProtectionProps> = ({
     enableContextMenuBlock,
     enableDevToolsDetection,
     watermarkText,
+    videoElementRef,
     onScreenshotAttempt: () => {
-      // Trigger black screen overlay
-      setIsScreenshotting(true);
-      setTimeout(() => setIsScreenshotting(false), 2000);
-      
       if (showWarningOnAttempt) {
         setWarningMessage('⚠️ Screenshot tidak diperbolehkan!');
         setShowWarning(true);
         setTimeout(() => setShowWarning(false), 3000);
       }
-      
+
       // Log to server
       fetch('/api/security/log', {
         method: 'POST',
@@ -70,8 +69,7 @@ export const ScreenProtection: React.FC<ScreenProtectionProps> = ({
         setWarningMessage('⚠️ Screen recording terdeteksi!');
         setShowWarning(true);
       }
-      
-      // Log to server
+
       fetch('/api/security/log', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -84,32 +82,39 @@ export const ScreenProtection: React.FC<ScreenProtectionProps> = ({
     },
   });
 
-  // Generate watermark positions - optimized, less frequent updates
+  // Generate floating watermark positions
   useEffect(() => {
+    if (!enableWatermark) return;
+
     const generatePositions = () => {
       const positions = [];
-      // Reduced from 8 to 5 for better performance
-      for (let i = 0; i < 5; i++) {
+      for (let i = 0; i < 4; i++) {
         positions.push({
           top: Math.random() * 90,
           left: Math.random() * 90,
           rotation: Math.random() * 360,
-          opacity: 0.04 + Math.random() * 0.04,
+          opacity: 0.05 + Math.random() * 0.03,
         });
       }
       setWatermarkPositions(positions);
     };
 
     generatePositions();
-    // Update posisi setiap 15 detik (lebih jarang untuk performa)
-    const interval = setInterval(generatePositions, 15000);
+    const interval = setInterval(generatePositions, 20000);
     return () => clearInterval(interval);
-  }, []);
+  }, [enableWatermark]);
+
+  // Combine watermark text with user email if available
+  const displayWatermark = useMemo(() => {
+    if (userEmail) {
+      return `${watermarkText} • ${userEmail}`;
+    }
+    return watermarkText;
+  }, [watermarkText, userEmail]);
 
   return (
     <>
       <style jsx global>{`
-        /* Cegah user select dan copy */
         .screen-protected {
           -webkit-user-select: none;
           -moz-user-select: none;
@@ -118,7 +123,6 @@ export const ScreenProtection: React.FC<ScreenProtectionProps> = ({
           -webkit-touch-callout: none;
         }
 
-        /* Cegah screenshot di beberapa browser mobile */
         .screen-protected * {
           -webkit-user-select: none;
           -moz-user-select: none;
@@ -126,75 +130,89 @@ export const ScreenProtection: React.FC<ScreenProtectionProps> = ({
           user-select: none;
         }
 
-        /* CSS untuk deteksi screenshot di iOS */
-        @media only screen and (max-width: 768px) {
-          .screen-protected {
-            -webkit-user-select: none;
-            -webkit-touch-callout: none;
-          }
-        }
-- optimized with GPU acceleration */
         .blur-transition {
-          transition: filter 0.2s ease-out;
+          transition: filter 0.3s ease-out, backdrop-filter 0.3s ease-out;
           will-change: filter;
         }
 
-        /* Watermark animation - simplified for performance */
         @keyframes float-watermark {
-          0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(-8px); }
+          0%, 100% { 
+            transform: translateY(0px) translateX(0px); 
+          }
+          25% { 
+            transform: translateY(-12px) translateX(8px); 
+          }
+          50% { 
+            transform: translateY(0px) translateX(-8px); 
+          }
+          75% { 
+            transform: translateY(12px) translateX(8px); 
+          }
         }
 
         .watermark-text {
-          animation: float-watermark 20s ease-in-out infinite;
+          animation: float-watermark 30s ease-in-out infinite;
           pointer-events: none;
-          font-family: 'Arial Black', sans-serif;
-          font-weight: bold;
-          text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+          font-family: 'Arial', sans-serif;
+          font-weight: 600;
+          text-shadow: 
+            1px 1px 2px rgba(0,0,0,0.1),
+            -1px -1px 2px rgba(255,255,255,0.1);
           will-change: transform;
           backface-visibility: hidden;
-          transform: translateZ(0
-          text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
-        }- GPU accelerated */
-        .screenshot-black-overlay {
-          position: fixed;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background: #000000;
-          z-index: 999999;
-          pointer-events: none;
-          will-change: opacity;
           transform: translateZ(0);
-          backface-visibility: hidden
-          z-index: 999999;
-          pointer-events: none;
         }
 
-        /* Warning pulse animation */
         @keyframes pulse-warning {
-          0%, 100% { transform: scale(1); opacity: 1; }
-          50% { transform: scale(1.05); opacity: 0.9; }
+          0%, 100% { 
+            transform: scale(1); 
+            opacity: 1; 
+          }
+          50% { 
+            transform: scale(1.05); 
+            opacity: 0.9; 
+          }
         }
 
         .warning-pulse {
           animation: pulse-warning 0.5s ease-in-out 3;
         }
 
-        /* Overlay untuk mobile screenshot detection */
-        @media (max-width: 768px) {
-          .screen-protected::before {
-            content: '';
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            pointer-events: none;
-            z-index: 9999;
-            background: transparent;
-          }
+        /* High-security blur overlay */
+        .security-blur-overlay {
+          position: fixed;
+          inset: 0;
+          background: rgba(0, 0, 0, 0.95);
+          backdrop-filter: blur(30px);
+          -webkit-backdrop-filter: blur(30px);
+          z-index: 99998;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        /* Anti-screenshot pattern */
+        .anti-screenshot-pattern {
+          position: fixed;
+          inset: 0;
+          background: 
+            repeating-linear-gradient(
+              0deg,
+              transparent,
+              transparent 2px,
+              rgba(0,0,0,0.008) 2px,
+              rgba(0,0,0,0.008) 4px
+            ),
+            repeating-linear-gradient(
+              90deg,
+              transparent,
+              transparent 2px,
+              rgba(0,0,0,0.008) 2px,
+              rgba(0,0,0,0.008) 4px
+            );
+          pointer-events: none;
+          z-index: 99997;
+          mix-blend-mode: multiply;
         }
       `}</style>
 
@@ -202,71 +220,73 @@ export const ScreenProtection: React.FC<ScreenProtectionProps> = ({
         className={`screen-protected relative ${className} ${
           isBlurred ? 'blur-transition' : ''
         }`}
+        data-protected="true"
         style={{
-          filter: isBlurred ? 'blur(20px)' : isScreenshotting ? 'brightness(0)' : 'none',
-          willChange: isBlurred || isScreenshotting ? 'filter' : 'auto',
-          transform: 'translateZ(0)',
+          filter: isBlurred ? 'blur(8px) brightness(0.3)' : 'none',
+          willChange: isBlurred ? 'filter' : 'auto',
         }}
       >
-        {/* Anti-Screenshot Overlays */}
-        <AntiScreenshotOverlay />
+        {/* Anti-Screenshot Pattern */}
+        <div className="anti-screenshot-pattern" />
 
-        {/* Watermark Layer - optimized rendering */}
+        {/* Floating Watermarks */}
         {enableWatermark && watermarkPositions.length > 0 && (
-          <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden">
+          <div className="fixed inset-0 pointer-events-none z-[99996] overflow-hidden">
             {watermarkPositions.map((pos, index) => (
               <div
                 key={index}
-                className="watermark-text absolute text-gray-400 whitespace-nowrap"
+                className="watermark-text absolute text-gray-400 whitespace-nowrap select-none"
                 style={{
                   top: `${pos.top}%`,
                   left: `${pos.left}%`,
                   transform: `rotate(${pos.rotation}deg) translateZ(0)`,
                   opacity: pos.opacity,
-                  fontSize: '22px',
-                  animationDelay: `${index * 3}s`,
+                  fontSize: '18px',
+                  animationDelay: `${index * 7.5}s`,
                 }}
               >
-                {watermarkText}
+                {displayWatermark}
               </div>
             ))}
           </div>
         )}
 
-        {/* Recording Warning */}
-        {isRecording && (
-          <div className="fixed top-4 right-4 z-[9999] bg-red-500 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 animate-pulse">
-            <Eye size={20} />
-            <span className="font-bold">Recording Detected!</span>
-          </div>
-        )}
-
-        {/* Blur Overlay dengan pesan */}
+        {/* Blur Overlay with Message */}
         {isBlurred && (
-          <div className="fixed inset-0 z-[9998] flex items-center justify-center bg-black/50 backdrop-blur-sm">
-            <div className="bg-white p-8 rounded-xl shadow-2xl text-center">
-              <EyeOff size={64} className="mx-auto mb-4 text-[#C5A059]" />
-              <h2 className="text-2xl font-bold text-gray-800 mb-2">
+          <div className="security-blur-overlay">
+            <div className="bg-white p-10 rounded-2xl shadow-2xl text-center max-w-md mx-4">
+              <EyeOff size={80} className="mx-auto mb-6 text-[#C5A059]" />
+              <h2 className="text-3xl font-bold text-gray-900 mb-3">
                 Konten Dilindungi
               </h2>
-              <p className="text-gray-600">
-                Konten akan muncul kembali saat Anda kembali ke halaman ini
+              <p className="text-gray-600 text-lg leading-relaxed">
+                Konten akan muncul kembali saat Anda kembali ke tab ini.
+                Ini adalah fitur keamanan untuk melindungi materi pembelajaran.
               </p>
             </div>
           </div>
         )}
 
+        {/* Recording Warning */}
+        {isRecording && (
+          <div className="fixed top-6 right-6 z-[99999] bg-red-500 text-white px-6 py-3 rounded-xl shadow-2xl flex items-center gap-3 animate-pulse">
+            <Eye size={24} />
+            <span className="font-bold text-lg">Recording Detected!</span>
+          </div>
+        )}
+
         {/* Warning Toast */}
         {showWarning && (
-          <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[9999] bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg warning-pulse">
-            <div className="flex items-center gap-3">
-              <Shield size={24} />
-              <span className="font-bold text-lg">{warningMessage}</span>
+          <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[99999] bg-red-600 text-white px-8 py-4 rounded-xl shadow-2xl warning-pulse">
+            <div className="flex items-center gap-4">
+              <Shield size={28} />
+              <span className="font-bold text-xl">{warningMessage}</span>
             </div>
           </div>
         )}
 
-        {/* Removed heavy invisible overlay for better performance */}
+        {/* Main Content */}
+        {children}
       </div>
     </>
   );
