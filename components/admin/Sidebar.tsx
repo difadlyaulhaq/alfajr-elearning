@@ -74,23 +74,10 @@ const AdminSidebar = () => {
       path: '/admin/courses'
     },
     {
-      key: 'quiz',
-      label: 'Bank Soal',
-      icon: FileQuestion,
-      path: '/admin/quiz',
-      badge: 'Soon'
-    },
-    {
       key: 'reports',
       label: 'Laporan',
       icon: BarChart3,
       path: '/admin/reports'
-    },
-    {
-      key: 'settings',
-      label: 'Pengaturan Sistem',
-      icon: Settings,
-      path: '/admin/settings'
     },
     {
       key: 'learning-panel',

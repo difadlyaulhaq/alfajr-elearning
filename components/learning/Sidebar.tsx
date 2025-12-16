@@ -136,13 +136,13 @@ const Sidebar = () => {
         )}
         
         {/* Help */}
-        <Link 
+        {/* <Link 
           href="/learning/help" 
           className="relative flex items-center px-4 py-2.5 text-sm font-medium rounded-xl text-gray-300 hover:bg-gradient-to-r hover:from-gray-800/30 hover:to-gray-700/30 hover:text-white transition-all group border border-gray-800/30 hover:border-gray-600/30"
         >
           <LifeBuoy className="w-5 h-5 mr-3 text-gray-400 group-hover:text-white" />
           <span>Bantuan</span>
-        </Link>
+        </Link> */}
 
         {/* Logout */}
         <button
