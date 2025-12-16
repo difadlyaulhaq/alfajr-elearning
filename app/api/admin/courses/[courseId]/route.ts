@@ -1,5 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
+import { Section, Lesson } from '@/types'; // Import Section and Lesson types needed here
+
+function getYouTubeVideoId(url: string): string | null {
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+  const match = url.match(regExp);
+  return (match && match[2].length === 11) ? match[2] : null;
+}
+
+function generateYouTubeThumbnailUrl(videoId: string): string {
+  return `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
+}
 
 // GET: Mengambil satu data kursus
 
@@ -131,6 +142,26 @@ export async function PATCH(
 
     const totalVideos = body.sections?.reduce((acc: number, section: any) => acc + (section.lessons?.length || 0), 0) || 0;
 
+    let courseThumbnail: string | undefined;
+
+    // Iterate through sections and lessons to find the first YouTube video thumbnail
+    if (body.sections && Array.isArray(body.sections)) {
+      for (const section of body.sections as Section[]) { // Cast to Section[] for type safety
+        if (section.lessons && Array.isArray(section.lessons)) {
+          for (const lesson of section.lessons as Lesson[]) { // Cast to Lesson[]
+            if (lesson.contentType === 'youtube' && lesson.url) {
+              const videoId = getYouTubeVideoId(lesson.url);
+              if (videoId) {
+                courseThumbnail = generateYouTubeThumbnailUrl(videoId);
+                break; // Found the first YouTube video, use its thumbnail and break
+              }
+            }
+          }
+        }
+        if (courseThumbnail) break; // If thumbnail found, no need to check other sections
+      }
+    }
+
 
 
     const updateData = {
@@ -138,7 +169,7 @@ export async function PATCH(
       ...body,
 
       categoryName,
-
+      thumbnail: courseThumbnail || body.thumbnail, // Prioritize generated thumbnail, fallback to body.thumbnail if provided
       totalVideos,
 
       updatedAt: new Date().toISOString(),
