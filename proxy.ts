@@ -36,7 +36,9 @@ export function proxy(request: NextRequest) {
   // ============================================
   if (PUBLIC_API_ROUTES.some(route => pathname.startsWith(route))) {
     console.log('[PROXY] ✅ Bypassing API route:', pathname);
-    return NextResponse.next();
+    const response = NextResponse.next();
+    addSecurityHeaders(response);
+    return response;
   }
   
   // Get authentication cookies
@@ -59,7 +61,9 @@ export function proxy(request: NextRequest) {
       return redirectBasedOnRole(userRole, request.url);
     }
     console.log('[PROXY] ✅ Allowing public route');
-    return NextResponse.next();
+    const response = NextResponse.next();
+    addSecurityHeaders(response);
+    return response;
   }
 
   // ============================================
@@ -79,7 +83,9 @@ export function proxy(request: NextRequest) {
       return NextResponse.redirect(new URL('/learning/dashboard', request.url));
     }
     console.log('[PROXY] ✅ Admin access granted');
-    return NextResponse.next();
+    const response = NextResponse.next();
+    addSecurityHeaders(response);
+    return response;
   }
 
   /* 
@@ -104,7 +110,35 @@ export function proxy(request: NextRequest) {
   }
 
   console.log('[PROXY] ✅ Default allow');
-  return NextResponse.next();
+  const response = NextResponse.next();
+  addSecurityHeaders(response);
+  return response;
+}
+
+// Add security headers for screenshot/screen recording protection
+function addSecurityHeaders(response: NextResponse) {
+  // Prevent embedding in iframes from other domains
+  response.headers.set('X-Frame-Options', 'SAMEORIGIN');
+  
+  // Prevent MIME type sniffing
+  response.headers.set('X-Content-Type-Options', 'nosniff');
+  
+  // Referrer policy
+  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  
+  // Content Security Policy
+  response.headers.set(
+    'Content-Security-Policy',
+    "frame-ancestors 'self'; upgrade-insecure-requests;"
+  );
+  
+  // Permissions Policy (experimental - untuk block screen capture di beberapa browser)
+  response.headers.set(
+    'Permissions-Policy',
+    'screen-wake-lock=(), display-capture=()'
+  );
+  
+  return response;
 }
 
 function redirectToLogin(originalUrl: string, currentPath: string) {

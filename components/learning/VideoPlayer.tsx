@@ -93,6 +93,19 @@ export function VideoPlayer({
     }
   };
 
+  // Additional protection for video element
+  useEffect(() => {
+    const videoElements = document.querySelectorAll('video, iframe');
+    videoElements.forEach((element) => {
+      // Prevent context menu on video
+      element.addEventListener('contextmenu', (e) => e.preventDefault());
+      // Add controlsList for HTML5 video
+      if (element.tagName === 'VIDEO') {
+        (element as HTMLVideoElement).controlsList.add('nodownload');
+      }
+    });
+  }, [lesson.id]);
+
   useEffect(() => {
     if (!videoId) return;
     const onYouTubeIframeAPIReady = () => {
