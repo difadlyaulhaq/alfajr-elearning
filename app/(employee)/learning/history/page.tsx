@@ -4,66 +4,118 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
-import { BookOpen, CheckCircle, Loader2 } from 'lucide-react';
+import { 
+  BookOpen, 
+  CheckCircle, 
+  Loader2, 
+  History, 
+  Search, 
+  Clock, 
+  Filter,
+  PlayCircle
+} from 'lucide-react';
 import { Course, Progress } from '@/types';
 
-// Perbaikan Tipe: Mengatasi konflik properti 'status'
-// Kita ambil semua properti Course KECUALI status, lalu gabungkan dengan Progress
-type CourseWithProgress = Omit<Course, 'status'> & Progress;
+// --- Components ---
 
-// Copied and updated from the dashboard page for styling consistency
-const CourseCard: React.FC<{ course: CourseWithProgress }> = ({ course }) => {
+// Komponen Badge Status
+const StatusBadge = ({ status }: { status: string }) => {
+  if (status === 'completed') {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700 border border-green-200">
+        <CheckCircle size={12} />
+        Selesai
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-yellow-100 text-yellow-700 border border-yellow-200">
+      <Clock size={12} />
+      Proses
+    </span>
+  );
+};
+
+// Kartu Kursus dengan Desain Baru (Black & Gold Theme)
+const CourseCard: React.FC<{ course: Omit<Course, 'status'> & Progress }> = ({ course }) => {
   const isCompleted = course.status === 'completed';
-  const isInProgress = course.status === 'in-progress';
 
   return (
-    <Link href={`/learning/course/${course.id}`} key={course.id}>
-      <div className="group bg-white rounded-xl shadow-md hover:shadow-2xl transition-all overflow-hidden border-2 border-gray-100 hover:border-brand-gold hover:scale-105 duration-300 h-full flex flex-col">
-        <div className="h-48 bg-gradient-to-br from-brand-gold/10 to-yellow-100/20 relative overflow-hidden">
+    <Link href={`/learning/course/${course.id}`} className="block h-full">
+      <div className="group bg-white rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100 hover:border-brand-gold h-full flex flex-col relative">
+        
+        {/* Thumbnail Area */}
+        <div className="h-44 relative overflow-hidden bg-brand-black">
           {course.thumbnail || course.coverImage ? (
-            <img src={course.thumbnail || course.coverImage} alt={course.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
+            <img 
+              src={course.thumbnail || course.coverImage} 
+              alt={course.title} 
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-90 group-hover:opacity-100" 
+            />
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-6xl">📚</div>
-          )}
-          <div className="absolute top-3 right-3 bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-full text-xs font-bold text-black shadow-lg border border-brand-gold/20">
-            {course.categoryName}
-          </div>
-          {isCompleted && (
-            <div className="absolute top-3 left-3 bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1">
-              <CheckCircle size={12} />
-              <span>Selesai</span>
+            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-brand-black to-gray-800">
+              <BookOpen className="text-brand-gold opacity-50" size={48} />
             </div>
           )}
+          
+          {/* Overlay Gradient for Text Readability */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-60" />
+
+          {/* Category Badge */}
+          <div className="absolute top-3 right-3">
+             <span className="px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider bg-brand-gold text-black shadow-lg">
+              {course.categoryName}
+             </span>
+          </div>
+
+          {/* Status Badge Positioned on Image */}
+          <div className="absolute bottom-3 left-3">
+            <StatusBadge status={course.status || 'in-progress'} />
+          </div>
         </div>
-        <div className="p-5 flex flex-col flex-grow">
-          <h3 className="font-bold text-base text-black mb-2 line-clamp-2 group-hover:text-brand-gold transition-colors" title={course.title}>
+
+        {/* Content Area */}
+        <div className="p-5 flex flex-col flex-grow relative">
+          <h3 className="font-bold text-lg text-brand-black mb-2 line-clamp-2 leading-snug group-hover:text-brand-gold transition-colors">
             {course.title}
           </h3>
-          <p className="text-xs text-gray-600 line-clamp-2 mb-4 flex-grow">{course.description}</p>
           
-          {isInProgress && (
-            <div className="mb-3">
-              <div className="flex justify-between items-center mb-1">
-                <span className="text-xs font-semibold text-yellow-600">Dalam Pengerjaan</span>
-                <span className="text-xs font-bold text-black">{course.progress}%</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-1.5">
-                <div 
-                  className="bg-yellow-500 h-1.5 rounded-full"
-                  style={{ width: `${course.progress}%` }}
-                />
-              </div>
-            </div>
-          )}
+          <div className="text-xs text-gray-500 mb-4 line-clamp-2 flex-grow">
+            {course.description || "Tidak ada deskripsi tersedia."}
+          </div>
 
-          <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-            <div className="text-xs text-gray-500 flex items-center gap-1">
-              <BookOpen size={14} className="text-brand-gold" />
-              {course.totalVideos || 0} Materi
+          {/* Progress Section */}
+          <div className="space-y-3 mt-auto pt-4 border-t border-gray-100">
+            {!isCompleted ? (
+              <div>
+                <div className="flex justify-between text-xs mb-1.5 font-medium">
+                  <span className="text-gray-500">Progress Belajar</span>
+                  <span className="text-brand-black">{course.progress}%</span>
+                </div>
+                <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+                  <div 
+                    className="bg-brand-gold h-full rounded-full transition-all duration-1000 ease-out"
+                    style={{ width: `${course.progress}%` }}
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 text-green-600 text-xs font-medium bg-green-50 p-2 rounded-lg">
+                <CheckCircle size={14} />
+                <span>Kursus telah diselesaikan pada {course.completedAt ? new Date(course.completedAt).toLocaleDateString('id-ID') : '-'}</span>
+              </div>
+            )}
+
+            <div className="flex items-center justify-between mt-2">
+               <div className="flex items-center text-xs text-gray-400 gap-1">
+                  <PlayCircle size={14} />
+                  <span>{course.totalVideos || 0} Materi</span>
+               </div>
+               <span className="text-xs font-bold text-brand-gold group-hover:translate-x-1 transition-transform inline-flex items-center">
+                  {isCompleted ? "Lihat Kembali" : "Lanjutkan"} 
+                  <span className="ml-1">→</span>
+               </span>
             </div>
-            <span className="text-xs font-semibold text-black group-hover:text-yellow-600">
-              {isCompleted ? "Lihat Lagi" : "Lanjutkan Belajar"} →
-            </span>
           </div>
         </div>
       </div>
@@ -71,12 +123,14 @@ const CourseCard: React.FC<{ course: CourseWithProgress }> = ({ course }) => {
   );
 };
 
-
 const LearningHistoryPage = () => {
   const { user } = useAuth();
-  // Gunakan tipe baru di sini juga
-  const [history, setHistory] = useState<CourseWithProgress[]>([]);
+  const [history, setHistory] = useState<(Omit<Course, 'status'> & Progress)[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // State untuk Filter dan Search
+  const [filter, setFilter] = useState<'all' | 'in-progress' | 'completed'>('all');
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     const fetchHistory = async () => {
@@ -103,38 +157,151 @@ const LearningHistoryPage = () => {
     fetchHistory();
   }, [user]);
 
-  const myCourses = useMemo(() => {
-    return history.filter(item => ['in-progress', 'completed'].includes(item.status));
+  // Logic Filtering
+  const filteredCourses = useMemo(() => {
+    return history.filter(item => {
+      // Filter by Status Tab
+      const statusMatch = 
+        filter === 'all' ? true : 
+        filter === 'completed' ? item.status === 'completed' :
+        item.status !== 'completed'; // in-progress captures everything else
+
+      // Filter by Search Query
+      const searchMatch = item.title.toLowerCase().includes(searchQuery.toLowerCase());
+
+      return statusMatch && searchMatch;
+    });
+  }, [history, filter, searchQuery]);
+
+  // Stats sederhana
+  const stats = useMemo(() => {
+    const completed = history.filter(h => h.status === 'completed').length;
+    const inProgress = history.length - completed;
+    return { completed, inProgress, total: history.length };
   }, [history]);
 
   return (
-    <div className="container mx-auto p-8 bg-brand-gray min-h-screen">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-1 text-gray-900">Kursus Saya</h1>
-        <p className="text-gray-600">Berikut adalah daftar semua materi yang sedang Anda pelajari dan yang telah diselesaikan.</p>
-      </div>
+    <div className="min-h-screen bg-brand-gray pb-20">
       
-      {loading ? (
-        <div className="text-center py-20">
-            <Loader2 className="mx-auto h-12 w-12 animate-spin text-brand-gold" />
-            <p className="mt-4 text-gray-500">Memuat kursus...</p>
+      {/* Hero Header - Konsisten dengan Dashboard */}
+      <div className="relative bg-brand-black overflow-hidden mb-8 shadow-md">
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute inset-0" style={{
+            backgroundImage: `radial-gradient(circle at 2px 2px, #C5A059 1px, transparent 0)`,
+            backgroundSize: '40px 40px'
+          }}></div>
         </div>
-      ) : myCourses.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {myCourses.map((item) => (
-            <CourseCard key={item.id} course={item} />
-          ))}
+        <div className="relative container mx-auto px-6 py-12">
+           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-brand-gold to-yellow-700 flex items-center justify-center shadow-lg border-2 border-white/10 text-white">
+                  <History size={32} />
+                </div>
+                <div>
+                  <h1 className="text-3xl font-bold text-white tracking-tight">Riwayat Belajar</h1>
+                  <p className="text-brand-gold/80 mt-1 font-medium">Arsip perjalanan pengembangan diri Anda</p>
+                </div>
+              </div>
+
+              {/* Mini Stats di Header */}
+              <div className="flex gap-4 text-white">
+                <div className="text-center px-4 py-2 bg-white/5 rounded-lg border border-white/10 backdrop-blur-sm">
+                  <div className="text-2xl font-bold text-brand-gold">{stats.total}</div>
+                  <div className="text-[10px] uppercase tracking-wider opacity-70">Total Kursus</div>
+                </div>
+                <div className="text-center px-4 py-2 bg-white/5 rounded-lg border border-white/10 backdrop-blur-sm">
+                  <div className="text-2xl font-bold text-green-400">{stats.completed}</div>
+                  <div className="text-[10px] uppercase tracking-wider opacity-70">Selesai</div>
+                </div>
+              </div>
+           </div>
         </div>
-      ) : (
-        <div className="text-center py-20 px-4 bg-white rounded-lg shadow-md border">
-          <BookOpen className="mx-auto h-12 w-12 text-gray-400" />
-          <h3 className="mt-4 text-lg font-medium text-gray-900">Anda Belum Memiliki Kursus</h3>
-          <p className="mt-2 text-sm text-gray-500">Jelajahi katalog untuk menemukan kursus pertama Anda!</p>
-          <Link href="/learning/catalog" className="mt-6 inline-block bg-brand-gold hover:bg-yellow-600 text-black font-bold py-2 px-6 rounded-lg transition">
-            Jelajahi Katalog
-          </Link>
+      </div>
+
+      <div className="container mx-auto px-6">
+        
+        {/* Controls Bar: Search & Filter Tabs */}
+        <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 mb-8 flex flex-col md:flex-row justify-between items-center gap-4 sticky top-4 z-10">
+          
+          {/* Tabs */}
+          <div className="flex p-1 bg-gray-100 rounded-lg w-full md:w-auto">
+            <button 
+              onClick={() => setFilter('all')}
+              className={`flex-1 md:flex-none px-6 py-2 rounded-md text-sm font-medium transition-all ${filter === 'all' ? 'bg-white text-brand-black shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+            >
+              Semua
+            </button>
+            <button 
+              onClick={() => setFilter('in-progress')}
+              className={`flex-1 md:flex-none px-6 py-2 rounded-md text-sm font-medium transition-all ${filter === 'in-progress' ? 'bg-white text-brand-black shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+            >
+              Sedang Berjalan
+            </button>
+            <button 
+              onClick={() => setFilter('completed')}
+              className={`flex-1 md:flex-none px-6 py-2 rounded-md text-sm font-medium transition-all ${filter === 'completed' ? 'bg-white text-brand-black shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+            >
+              Selesai
+            </button>
+          </div>
+
+          {/* Search Box */}
+          <div className="relative w-full md:w-72">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Search size={18} className="text-gray-400" />
+            </div>
+            <input
+              type="text"
+              placeholder="Cari kursus..."
+              className="block w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-lg leading-5 bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-gold/50 focus:border-brand-gold sm:text-sm transition-all"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
         </div>
-      )}
+
+        {/* Content Grid */}
+        {loading ? (
+          <div className="text-center py-24">
+              <Loader2 className="mx-auto h-12 w-12 animate-spin text-brand-gold" />
+              <p className="mt-4 text-gray-500 font-medium">Menyiapkan data riwayat...</p>
+          </div>
+        ) : filteredCourses.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {filteredCourses.map((item) => (
+              <CourseCard key={item.id} course={item} />
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-20 px-4 bg-white rounded-2xl shadow-sm border border-gray-100 border-dashed">
+            <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Filter className="h-10 w-10 text-gray-300" />
+            </div>
+            <h3 className="mt-2 text-xl font-bold text-gray-900">Tidak ada kursus ditemukan</h3>
+            <p className="mt-2 text-gray-500 max-w-sm mx-auto">
+              {searchQuery 
+                ? `Tidak ada hasil untuk pencarian "${searchQuery}"`
+                : filter === 'completed' 
+                  ? "Anda belum menyelesaikan kursus apapun. Terus semangat!" 
+                  : "Anda belum mengambil kursus apapun."}
+            </p>
+            {filter !== 'all' && !searchQuery && (
+               <button 
+                 onClick={() => setFilter('all')}
+                 className="mt-6 text-brand-gold font-semibold hover:underline"
+               >
+                 Lihat semua kursus
+               </button>
+            )}
+            {history.length === 0 && (
+              <Link href="/learning/catalog" className="mt-6 inline-flex items-center gap-2 bg-brand-black hover:bg-gray-800 text-white font-bold py-3 px-8 rounded-xl transition shadow-lg hover:shadow-xl">
+                <BookOpen size={18} />
+                Jelajahi Katalog
+              </Link>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 };

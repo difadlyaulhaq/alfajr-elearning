@@ -23,6 +23,8 @@ export interface Course {
   sections: Section[];
   totalVideos: number;
   totalStudents: number;
+  enrolledUserIds: string[];
+  enrolledDivisionIds: string[];
 }
 
 export interface Section {
@@ -59,4 +61,9 @@ export interface Lesson {
   forceComplete: boolean;
   attachmentName?: string;
   attachmentUrl?: string;
+}
+
+export interface Division {
+  id: string;
+  name: string;
 }
