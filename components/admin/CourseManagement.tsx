@@ -1,8 +1,9 @@
 'use client';
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, Edit, Trash2, Eye, Users, Video, X, Save, BookText, Youtube, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import ReactMarkdown from 'react-markdown';
 
 import RichTextEditor from '@/components/admin/RichTextEditor';
 
@@ -20,7 +21,9 @@ const CourseManagement: React.FC<CourseManagementProps> = ({ initialCourses, ini
   const [courses, setCourses] = useState<Course[]>(initialCourses);
   const [categories, setCategories] = useState<Category[]>(initialCategories);
   const [allUsers, setAllUsers] = useState<User[]>([]);
+  const [searchTermUsers, setSearchTermUsers] = useState<string>('');
   const [allDivisions, setAllDivisions] = useState<Division[]>([]);
+  const [searchTermDivisions, setSearchTermDivisions] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
@@ -211,6 +214,10 @@ const CourseManagement: React.FC<CourseManagementProps> = ({ initialCourses, ini
     toast.success('Materi berhasil disimpan sementara!');
   };
 
+  const handleRichTextChange = useCallback((content: string) => {
+    setTempLesson(prev => ({...prev, textContent: content}));
+  }, [setTempLesson]);
+
   return (
     <div className="min-h-screen bg-[#F8F9FA]">
       <div className="bg-white border-b border-gray-200 px-8 py-6 flex items-center justify-between">
@@ -302,7 +309,7 @@ const CourseManagement: React.FC<CourseManagementProps> = ({ initialCourses, ini
                               <div className="md:col-span-2">
                                 <RichTextEditor
                                   initialValue={tempLesson.textContent}
-                                  onChange={(content) => setTempLesson({...tempLesson, textContent: content})}
+                                  onChange={handleRichTextChange}
                                   placeholder="Tulis artikel di sini..."
                                   showSaveButton={false}
                                 />
@@ -330,6 +337,13 @@ const CourseManagement: React.FC<CourseManagementProps> = ({ initialCourses, ini
                 <div className="max-w-2xl mx-auto space-y-6">
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">Enroll User(s)</label>
+                    <input
+                      type="text"
+                      placeholder="Cari pengguna..."
+                      className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#C5A059] outline-none text-black placeholder:text-gray-400 mb-2"
+                      value={searchTermUsers}
+                      onChange={(e) => setSearchTermUsers(e.target.value)}
+                    />
                     <select
                       multiple
                       value={formData.enrolledUserIds}
@@ -342,15 +356,27 @@ const CourseManagement: React.FC<CourseManagementProps> = ({ initialCourses, ini
                       className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#C5A059] outline-none text-black bg-white h-48"
                       disabled={isLoading}
                     >
-                      {allUsers.map((user) => (
-                        <option key={user.id} value={user.id}>
-                          {user.name} ({user.email})
-                        </option>
-                      ))}
+                      {allUsers
+                        .filter(user =>
+                          user.name.toLowerCase().includes(searchTermUsers.toLowerCase()) ||
+                          user.email.toLowerCase().includes(searchTermUsers.toLowerCase())
+                        )
+                        .map((user) => (
+                          <option key={user.id} value={user.id}>
+                            {user.name} ({user.email})
+                          </option>
+                        ))}
                     </select>
                   </div>
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">Enroll Division(s)</label>
+                    <input
+                      type="text"
+                      placeholder="Cari divisi..."
+                      className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#C5A059] outline-none text-black placeholder:text-gray-400 mb-2"
+                      value={searchTermDivisions}
+                      onChange={(e) => setSearchTermDivisions(e.target.value)}
+                    />
                     <select
                       multiple
                       value={formData.enrolledDivisionIds}
@@ -363,11 +389,15 @@ const CourseManagement: React.FC<CourseManagementProps> = ({ initialCourses, ini
                       className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#C5A059] outline-none text-black bg-white h-48"
                       disabled={isLoading}
                     >
-                      {allDivisions.map((division) => (
-                        <option key={division.id} value={division.id}>
-                          {division.name}
-                        </option>
-                      ))}
+                      {allDivisions
+                        .filter(division =>
+                          division.name.toLowerCase().includes(searchTermDivisions.toLowerCase())
+                        )
+                        .map((division) => (
+                          <option key={division.id} value={division.id}>
+                            {division.name}
+                          </option>
+                        ))}
                     </select>
                   </div>
                 </div>
@@ -379,6 +409,67 @@ const CourseManagement: React.FC<CourseManagementProps> = ({ initialCourses, ini
                 <button onClick={() => setCurrentStep(prev => prev + 1)} disabled={isLoading} className="px-6 py-2.5 bg-[#C5A059] text-black rounded-lg hover:bg-[#B08F4A] font-bold">Lanjut</button>
               ) : (
                 <button onClick={handleSaveCourse} disabled={isLoading} className="px-6 py-2.5 bg-[#C5A059] text-black rounded-lg hover:bg-[#B08F4A] font-bold flex items-center disabled:opacity-50 disabled:cursor-not-allowed">{isLoading ? <Loader2 size={18} className="mr-2 animate-spin" /> : <Save size={18} className="mr-2" />} {isLoading ? 'Menyimpan...' : 'Simpan Kursus'}</button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showPreview && previewData && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl w-full max-w-5xl h-[90vh] flex flex-col shadow-2xl">
+            <div className="flex items-center justify-between p-6 border-b">
+              <h2 className="text-xl font-bold text-black">Preview Kursus: {previewData.title}</h2>
+              <button onClick={() => setShowPreview(false)}><X size={24} className="text-gray-400 hover:text-red-500" /></button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-8 prose prose-lg max-w-none text-black">
+              {(previewData.thumbnail || previewData.coverImage) && (
+                <img src={previewData.thumbnail || previewData.coverImage || '/logo-alfajr.png'} alt={previewData.title} className="w-full h-60 object-cover rounded-lg mb-6" />
+              )}
+              {previewData.description && (
+                <>
+                  <h3 className="text-2xl font-bold mt-4 mb-2">Deskripsi</h3>
+                  <ReactMarkdown>{previewData.description}</ReactMarkdown>
+                </>
+              )}
+
+              {previewData.sections && previewData.sections.length > 0 && (
+                <div className="mt-8">
+                  <h2 className="text-3xl font-bold mb-4">Kurikulum</h2>
+                  {previewData.sections.map((section, sIndex) => (
+                    <div key={section.id} className="mb-6 border-b pb-4">
+                      <h3 className="text-xl font-semibold mb-3">Bab {sIndex + 1}: {section.title}</h3>
+                      {section.lessons && section.lessons.length > 0 ? (
+                        <ul className="space-y-3">
+                          {section.lessons.map((lesson) => (
+                            <li key={lesson.id} className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                              <div className="flex items-center mb-2">
+                                <div className="w-8 h-8 bg-[#C5A059]/10 text-[#C5A059] flex items-center justify-center rounded mr-3 shrink-0">
+                                  {lesson.contentType === 'youtube' ? <Youtube size={16} /> : <BookText size={16} />}
+                                </div>
+                                <p className="font-semibold text-black text-base">{lesson.title}</p>
+                              </div>
+                              {lesson.contentType === 'text' && lesson.textContent && (
+                                <div className="prose prose-sm max-w-none mt-2 text-black">
+                                  <ReactMarkdown>{lesson.textContent}</ReactMarkdown>
+                                </div>
+                              )}
+                              {lesson.contentType === 'youtube' && lesson.url && (
+                                <div className="mt-2">
+                                  <a href={lesson.url} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline text-sm">
+                                    Tonton Video
+                                  </a>
+                                </div>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="text-gray-500 italic">Belum ada materi untuk bab ini.</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
           </div>

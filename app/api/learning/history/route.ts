@@ -56,7 +56,7 @@ export async function GET(request: Request) {
         courseData = {
           title: progressData.courseName || progressData.title || 'Kursus Tidak Ditemukan',
           description: 'Data detail kursus tidak ditemukan di database.',
-          categoryName: 'N/A',
+          categoryName: 'Materi Tidak Ditemukan / telah dihapus',
           totalVideos: progressData.totalLessons || 0,
         };
       }

@@ -1,10 +1,13 @@
 'use client';
 import React, { useState, useRef, useEffect } from 'react';
-import { 
-    Bold, Italic, List, ListOrdered, Link as LinkIcon,
-    Heading1, Heading2, Heading3, Quote, Code, Image as ImageIcon, // Changed Type to Heading3
-    Eye, Save, X, Undo, Redo} from 'lucide-react';
+import {
+  Bold, Italic, List, ListOrdered, Link as LinkIcon,
+  Heading1, Heading2, Quote, Code, Image as ImageIcon,
+  Eye, Save, X, Undo, Redo, Type
+} from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm'; // Tambahkan ini
+import rehypeHighlight from 'rehype-highlight'; // Tambahkan ini (untuk syntax highlighting code)
 
 interface RichTextEditorProps {
   initialValue?: string;
@@ -12,16 +15,24 @@ interface RichTextEditorProps {
   onCancel?: () => void;
   placeholder?: string;
   showSaveButton?: boolean;
-  onChange?: (content: string) => void; // Added onChange prop
+  onChange?: (content: string) => void;
+}
+
+interface Tool {
+  icon?: React.ElementType;
+  label?: string;
+  action?: () => void;
+  disabled?: boolean;
+  type?: 'divider';
 }
 
 const RichTextEditor: React.FC<RichTextEditorProps> = ({
-  initialValue = '', 
-  onSave, 
+  initialValue = '',
+  onSave,
   onCancel,
   placeholder = 'Tulis konten Anda di sini...',
   showSaveButton = true,
-  onChange // Destructure onChange
+  onChange
 }) => {
   const [content, setContent] = useState(initialValue);
   const [showPreview, setShowPreview] = useState(false);
@@ -32,8 +43,6 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
   // Sync with initialValue when it changes
   useEffect(() => {
     setContent(initialValue);
-    setHistory([initialValue]);
-    setHistoryIndex(0);
   }, [initialValue]);
 
   // Auto-save to history
@@ -47,12 +56,8 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
         setHistoryIndex(newHistory.length - 1);
       }
     }, 1000);
-    // Also call onChange if it exists
-    if (onChange) {
-      onChange(content);
-    }
     return () => clearTimeout(timer);
-  }, [content, history, historyIndex, onChange]);
+  }, [content]);
 
   const insertMarkdown = (before: string, after: string = '', placeholder: string = '') => {
     const textarea = textareaRef.current;
@@ -87,15 +92,15 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
 
     const start = textarea.selectionStart;
     const text = textarea.value;
-    
+
     // Find start of current line
     let lineStart = text.lastIndexOf('\n', start - 1) + 1;
     const lineEnd = text.indexOf('\n', start);
     const actualLineEnd = lineEnd === -1 ? text.length : lineEnd;
-    
+
     const newText = text.substring(0, lineStart) + prefix + text.substring(lineStart);
     setContent(newText);
-    
+
     setTimeout(() => {
       textarea.focus();
       textarea.setSelectionRange(start + prefix.length, start + prefix.length);
@@ -120,13 +125,13 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
     if (onSave) onSave(content);
   };
 
-  const tools = [
+  const tools: Tool[] = [
     { icon: Undo, label: 'Undo (Ctrl+Z)', action: undo, disabled: historyIndex === 0 },
     { icon: Redo, label: 'Redo (Ctrl+Y)', action: redo, disabled: historyIndex === history.length - 1 },
     { type: 'divider' },
     { icon: Heading1, label: 'Heading 1', action: () => insertLine('# ') },
     { icon: Heading2, label: 'Heading 2', action: () => insertLine('## ') },
-    { icon: Heading3, label: 'Heading 3', action: () => insertLine('### ') },
+    { icon: Type, label: 'Heading 3', action: () => insertLine('### ') },
     { type: 'divider' },
     { icon: Bold, label: 'Bold (Ctrl+B)', action: () => insertMarkdown('**', '**', 'teks tebal') },
     { icon: Italic, label: 'Italic (Ctrl+I)', action: () => insertMarkdown('*', '*', 'teks miring') },
@@ -162,7 +167,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [undo, redo, insertMarkdown]); // Added dependencies to avoid stale closures
+  }, [historyIndex, history]);
 
   return (
     <div className="flex flex-col h-full">
@@ -172,7 +177,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
           {tools.map((tool, index) => 
             tool.type === 'divider' ? (
               <div key={index} className="w-px h-6 bg-gray-300 mx-1" />
-            ) : tool.icon ? (
+            ) : tool.icon ? ( // Add a check for tool.icon here
               <button
                 key={index}
                 onClick={tool.action}
@@ -182,7 +187,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
               >
                 <tool.icon size={18} />
               </button>
-            ) : null
+            ) : null // Render null if tool.icon is undefined and not a divider
           )}
         </div>
 
@@ -226,15 +231,21 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
           <textarea
             ref={textareaRef}
             value={content}
-            onChange={(e) => setContent(e.target.value)}
+            onChange={(e) => {
+              setContent(e.target.value);
+              if (onChange) onChange(e.target.value);
+            }}
             placeholder={placeholder}
             className="w-full h-full p-6 text-black text-base leading-relaxed focus:outline-none resize-none"
             style={{ minHeight: '400px' }}
           />
         ) : (
           <div className="p-6">
-            <div className="prose prose-lg max-w-none">
-              <ReactMarkdown>
+            <div className="prose prose-lg max-w-none text-black">
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]} // Tambahkan plugin untuk fitur lengkap
+                rehypePlugins={[rehypeHighlight]} // Tambahkan untuk highlight code (opsional)
+              >
                 {content || '*Tidak ada konten untuk ditampilkan*'}
               </ReactMarkdown>
             </div>

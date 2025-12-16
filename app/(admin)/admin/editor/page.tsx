@@ -1,12 +1,11 @@
-'use client';
+"use client";
 import React, { useState } from 'react';
 import { 
-  Bold, Italic, List, ListOrdered, Link, 
-  Heading1, Heading2, Quote, Code, Image,
+  Bold, Italic, List, ListOrdered, Link as LinkIcon, 
+  Heading1, Heading2, Quote, Code, Image as ImageIcon,
   Eye, Save, ArrowLeft, Undo, Redo, Type, AlertCircle
 } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm'; // Import remarkGfm
+import ReactMarkdown from 'react-markdown'; // Import ReactMarkdown
 
 export default function StandaloneArticleEditor() {
   const [title, setTitle] = useState('');
@@ -95,7 +94,15 @@ export default function StandaloneArticleEditor() {
     alert('Artikel berhasil disimpan!');
   };
 
-  const tools = [
+interface Tool {
+  icon?: React.ElementType;
+  label?: string;
+  action?: () => void;
+  disabled?: boolean;
+  type?: 'divider';
+}
+
+const tools: Tool[] = [
     { icon: Undo, label: 'Undo', action: undo, disabled: historyIndex === 0 },
     { icon: Redo, label: 'Redo', action: redo, disabled: historyIndex === history.length - 1 },
     { type: 'divider' },
@@ -109,28 +116,16 @@ export default function StandaloneArticleEditor() {
     { icon: List, label: 'Bullet List', action: () => insertLine('- ') },
     { icon: ListOrdered, label: 'Numbered List', action: () => insertLine('1. ') },
     { type: 'divider' },
-    { icon: Link, label: 'Link', action: () => insertMarkdown('[', '](url)', 'teks link') },
-    { icon: Image, label: 'Image', action: () => insertMarkdown('![', '](url)', 'alt text') },
+    { icon: LinkIcon, label: 'Link', action: () => insertMarkdown('[', '](url)', 'teks link') },
+    { icon: ImageIcon, label: 'Image', action: () => insertMarkdown('![', '](url)', 'alt text') },
     { icon: Code, label: 'Code', action: () => insertMarkdown('`', '`', 'code') },
     { icon: Quote, label: 'Quote', action: () => insertLine('> ') },
   ];
 
   const renderMarkdown = (text: string) => {
-    let html = text
-      .replace(/^### (.*$)/gim, '<h3 class="text-xl font-bold mt-4 mb-2">$1</h3>')
-      .replace(/^## (.*$)/gim, '<h2 class="text-2xl font-bold mt-6 mb-3">$1</h2>')
-      .replace(/^# (.*$)/gim, '<h1 class="text-3xl font-bold mt-8 mb-4">$1</h1>')
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\*(.*?)\*/g, '<em>$1</em>')
-      .replace(/`(.*?)`/g, '<code class="bg-gray-100 px-1 py-0.5 rounded">$1</code>')
-      .replace(/^> (.*$)/gim, '<blockquote class="border-l-4 border-gray-300 pl-4 italic text-gray-700">$1</blockquote>')
-      .replace(/^\- (.*$)/gim, '<li class="ml-4">$1</li>')
-      .replace(/^\d+\. (.*$)/gim, '<li class="ml-4 list-decimal">$1</li>')
-      .replace(/\*\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="text-blue-600 underline">$1</a>')
-      .replace(/!\*\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" class="max-w-full rounded my-4" />')
-      .replace(/\n/g, '<br />');
-    
-    return html;
+    // This custom renderMarkdown function is not needed if using ReactMarkdown component directly
+    // The ReactMarkdown component handles the rendering
+    return text; // Return original text as ReactMarkdown will process it
   };
 
   return (
@@ -182,17 +177,17 @@ export default function StandaloneArticleEditor() {
                 {tools.map((tool, index) => 
                   tool.type === 'divider' ? (
                     <div key={index} className="w-px h-6 bg-gray-300 mx-1" />
-                  ) : (
-                    <button
-                      key={index}
-                      onClick={tool.action}
-                      disabled={tool.disabled}
-                      title={tool.label}
-                      className="p-2 rounded hover:bg-gray-200 text-gray-700 disabled:opacity-30 disabled:cursor-not-allowed"
-                    >
-                      <tool.icon size={18} />
-                    </button>
-                  )
+                              ) : tool.icon ? ( // Add a check for tool.icon here
+                                <button
+                                  key={index}
+                                  onClick={tool.action}
+                                  disabled={tool.disabled}
+                                  title={tool.label}
+                                  className="p-2 rounded hover:bg-gray-200 text-gray-700 disabled:opacity-30 disabled:cursor-not-allowed"
+                                >
+                                  <tool.icon size={18} />
+                                </button>
+                              ) : null // Render null if tool.icon is undefined and not a divider                  )
                 )}
               </div>
 
@@ -211,8 +206,11 @@ export default function StandaloneArticleEditor() {
               </h1>
               <div 
                 className="prose prose-lg max-w-none text-black leading-relaxed"
-                dangerouslySetInnerHTML={{ __html: renderMarkdown(content || '*Belum ada konten*') }}
-              />
+              >
+                <ReactMarkdown>
+                  {content || '*Belum ada konten*'}
+                </ReactMarkdown>
+              </div>
             </div>
           )}
 
