@@ -469,29 +469,48 @@ const CourseManagement: React.FC<CourseManagementProps> = ({ initialCourses, ini
                       value={searchTermUsers}
                       onChange={(e) => setSearchTermUsers(e.target.value)}
                     />
-                    <select
-                      multiple
-                      value={formData.enrolledUserIds}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          enrolledUserIds: Array.from(e.target.selectedOptions, (option) => option.value),
-                        })
-                      }
-                      className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#C5A059] outline-none text-black bg-white h-48"
-                      disabled={isLoading}
-                    >
+                    <div className="border rounded-lg h-48 overflow-y-auto p-2 bg-gray-50 space-y-2">
                       {allUsers
                         .filter(user =>
                           user.name.toLowerCase().includes(searchTermUsers.toLowerCase()) ||
                           user.email.toLowerCase().includes(searchTermUsers.toLowerCase())
                         )
-                        .map((user) => (
-                          <option key={user.id} value={user.id}>
-                            {user.name} ({user.email})
-                          </option>
-                        ))}
-                    </select>
+                        .map((user) => {
+                          const isEnrolled = formData.enrolledUserIds?.includes(user.id) ?? false;
+                          return (
+                            <label key={user.id} className={`flex items-center space-x-3 p-3 rounded-lg cursor-pointer border transition-all ${
+                              isEnrolled 
+                                ? 'bg-blue-50 border-blue-300 shadow-sm' 
+                                : 'bg-white border-gray-200 hover:bg-gray-100'
+                            }`}>
+                              <input
+                                type="checkbox"
+                                checked={isEnrolled}
+                                onChange={(e) => {
+                                  const checked = e.target.checked;
+                                  const userId = user.id;
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    enrolledUserIds: checked
+                                      ? [...(prev.enrolledUserIds || []), userId]
+                                      : (prev.enrolledUserIds || []).filter(id => id !== userId),
+                                  }));
+                                }}
+                                className="h-4 w-4 rounded border-gray-300 text-[#C5A059] focus:ring-2 focus:ring-offset-0 focus:ring-[#C5A059]/50"
+                              />
+                              <div className="flex items-center gap-2">
+                                <div className="w-8 h-8 bg-gradient-to-br from-brand-gold to-yellow-600 rounded-full flex items-center justify-center text-white font-bold text-xs">
+                                  {user.name.charAt(0).toUpperCase()}
+                                </div>
+                                <div>
+                                    <span className="text-sm font-semibold text-black">{user.name}</span>
+                                    <p className="text-xs text-gray-500">{user.email}</p>
+                                </div>
+                              </div>
+                            </label>
+                          )
+                        })}
+                    </div>
                   </div>
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">Enroll Division(s)</label>
@@ -502,29 +521,44 @@ const CourseManagement: React.FC<CourseManagementProps> = ({ initialCourses, ini
                       value={searchTermDivisions}
                       onChange={(e) => setSearchTermDivisions(e.target.value)}
                     />
-                    <select
-                      multiple
-                      value={formData.enrolledDivisionIds}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          enrolledDivisionIds: Array.from(e.target.selectedOptions, (option) => option.value),
-                        })
-                      }
-                      className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#C5A059] outline-none text-black bg-white h-48"
-                      disabled={isLoading}
-                    >
+                                        <div className="border rounded-lg h-48 overflow-y-auto p-2 bg-gray-50 space-y-2">
                       {allDivisions
                         .filter(division =>
                           division.name.toLowerCase().includes(searchTermDivisions.toLowerCase())
                         )
-                        .map((division) => (
-                          <option key={division.id} value={division.id}>
-                            {division.name}
-                          </option>
-                        ))}
-                    </select>
-                  </div>
+                        .map((division) => {
+                          const isEnrolled = formData.enrolledDivisionIds?.includes(division.id) ?? false;
+                          return (
+                            <label key={division.id} className={`flex items-center space-x-3 p-3 rounded-lg cursor-pointer border transition-all ${
+                              isEnrolled 
+                                ? 'bg-blue-50 border-blue-300 shadow-sm' 
+                                : 'bg-white border-gray-200 hover:bg-gray-100'
+                            }`}>
+                              <input
+                                type="checkbox"
+                                checked={isEnrolled}
+                                onChange={(e) => {
+                                  const checked = e.target.checked;
+                                  const divisionId = division.id;
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    enrolledDivisionIds: checked
+                                      ? [...(prev.enrolledDivisionIds || []), divisionId]
+                                      : (prev.enrolledDivisionIds || []).filter(id => id !== divisionId),
+                                  }));
+                                }}
+                                className="h-4 w-4 rounded border-gray-300 text-[#C5A059] focus:ring-2 focus:ring-offset-0 focus:ring-[#C5A059]/50"
+                              />
+                              <div className="flex items-center gap-2">
+                                <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center text-gray-600 font-bold text-xs">
+                                  <Users size={16} />
+                                </div>
+                                <span className="text-sm font-semibold text-black">{division.name}</span>
+                              </div>
+                            </label>
+                          )
+                        })}
+                    </div>                  </div>
                 </div>
               )}
             </div>

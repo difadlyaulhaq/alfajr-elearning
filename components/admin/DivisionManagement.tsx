@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Edit, Trash2, Loader, X, Building2, Users, User } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Loader, X, Building2, Users, User, ChevronDown } from 'lucide-react';
 
 interface Division {
   id: string;
@@ -26,6 +26,8 @@ interface DivisionModalProps {
 }
 
 const DivisionModal = ({ isOpen, onClose, onSubmit, formData, setFormData, isSubmitting, isEditing }: DivisionModalProps) => {
+  const [showIconPicker, setShowIconPicker] = useState(false);
+  
   if (!isOpen) return null;
 
   const iconOptions = ['🏢', '💼', '💰', '📊', '🛠️', '👥', '🎯', '📱', '🌐', '💡', '🔧', '📈'];
@@ -92,43 +94,61 @@ const DivisionModal = ({ isOpen, onClose, onSubmit, formData, setFormData, isSub
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">Icon Divisi</label>
-              <div className="grid grid-cols-6 gap-2">
-                {iconOptions.map((emoji) => (
-                  <button
-                    key={emoji}
-                    type="button"
-                    onClick={() => setFormData({...formData, icon: emoji})}
-                    className={`p-3 text-2xl rounded-lg border-2 transition-all hover:scale-110 ${
-                      formData.icon === emoji
-                        ? 'border-[#C5A059] bg-[#FFF8E7] scale-110'
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                  >
-                    {emoji}
-                  </button>
-                ))}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setShowIconPicker(!showIconPicker)}
+                  className="w-full text-left px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#C5A059]/50 focus:border-[#C5A059] outline-none transition-all flex items-center justify-between"
+                >
+                  <div className="flex items-center space-x-3">
+                    <span className="text-2xl">{formData.icon}</span>
+                    <span className="text-sm text-gray-600">Pilih icon...</span>
+                  </div>
+                  <ChevronDown size={20} className="text-gray-500" />
+                </button>
+                {showIconPicker && (
+                  <div className="absolute z-10 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg p-3 grid grid-cols-6 gap-2 max-h-48 overflow-y-auto">
+                    {iconOptions.map((emoji) => (
+                      <button
+                        key={emoji}
+                        type="button"
+                        onClick={() => {
+                          setFormData({...formData, icon: emoji});
+                          setShowIconPicker(false);
+                        }}
+                        className={`p-3 text-2xl rounded-lg transition-all hover:bg-gray-50 flex items-center justify-center ${
+                          formData.icon === emoji
+                            ? 'bg-[#FFF8E7] scale-105 ring-2 ring-[#C5A059] ring-offset-1'
+                            : ''
+                        }`}
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">Warna Tema</label>
-              <div className="space-y-2">
+              <div className="grid grid-cols-3 gap-2">
                 {colorOptions.map((color) => (
                   <button
                     key={color.value}
                     type="button"
                     onClick={() => setFormData({...formData, color: color.value})}
-                    className={`w-full flex items-center space-x-3 p-2.5 rounded-lg border-2 transition-all ${
+                    className={`flex flex-col items-center p-3 rounded-lg transition-all ${
                       formData.color === color.value
-                        ? 'border-[#C5A059] bg-[#FFF8E7]'
-                        : 'border-gray-200 hover:border-gray-300'
+                        ? 'bg-[#FFF8E7] ring-2 ring-[#C5A059] ring-offset-1'
+                        : 'hover:bg-gray-50'
                     }`}
                   >
                     <div
-                      className="w-6 h-6 rounded-full"
+                      className="w-8 h-8 rounded-full mb-2"
                       style={{ backgroundColor: color.value }}
                     />
-                    <span className="text-sm font-medium text-black">{color.name}</span>
+                    <span className="text-xs font-medium text-black">{color.name}</span>
                   </button>
                 ))}
               </div>
