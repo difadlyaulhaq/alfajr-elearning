@@ -12,6 +12,7 @@ interface User {
   role: 'admin' | 'user';
   division: string;
   status: 'active' | 'inactive';
+  createdAt?: string;
 }
 
 interface AuthContextType {

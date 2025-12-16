@@ -5,7 +5,7 @@ export interface User {
   division: string;
   role: 'admin' | 'user';
   status: 'active' | 'inactive';
-  createdAt: Date;
+  createdAt: string;
 }
 
 export interface Course {

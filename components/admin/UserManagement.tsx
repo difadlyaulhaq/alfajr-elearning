@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Edit, Trash2, UserX, UserCheck, Mail, Building, Loader, X } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, UserX, UserCheck, Mail, Building, Loader, X, Eye } from 'lucide-react';
 import Button from '@/components/shared/Button';
 
 // Definisikan tipe data User
@@ -306,6 +306,28 @@ const UserManagement = () => {
     }
   };
 
+  // Fungsi Delete User
+  const handleDeleteUser = async (userId: string, userName: string) => {
+    if (!confirm(`Apakah Anda yakin ingin menghapus user "${userName}"? Aksi ini tidak dapat dibatalkan.`)) return;
+
+    try {
+      const response = await fetch(`/api/admin/users/${userId}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        fetchUsers();
+        alert('User berhasil dihapus!');
+      } else {
+        const errorData = await response.json();
+        alert(`Gagal menghapus user: ${errorData.error}`);
+      }
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      alert('Terjadi kesalahan sistem saat menghapus user.');
+    }
+  };
+
   // Filter Logic
   const filteredUsers = users.filter(user => {
     const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -376,89 +398,109 @@ const UserManagement = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {isLoading ? (
-                  <tr>
-                    <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
+  {isLoading ? (
+    // ... (Loading state tetap sama)
+    <tr><td colSpan={5} className="px-6 py-12 text-center text-gray-500">
                       <div className="flex flex-col justify-center items-center">
                         <Loader className="animate-spin mb-2 text-[#C5A059]" size={32} /> 
                         <span className="text-sm">Memuat data...</span>
                       </div>
-                    </td>
-                  </tr>
-                ) : filteredUsers.length === 0 ? (
-                  <tr>
+                    </td></tr>
+  ) : filteredUsers.length === 0 ? (
+    // ... (Empty state tetap sama)
+    <tr>
                     <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
                       <p>Tidak ada data pegawai yang ditemukan.</p>
                     </td>
                   </tr>
-                ) : (
-                  filteredUsers.map((user) => (
-                    <tr key={user.id} className="hover:bg-gray-50 transition-colors group">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-10 h-10 bg-brand-gold rounded-full flex items-center justify-center text-white font-bold shadow-sm">
-                            {user.name.charAt(0).toUpperCase()}
-                          </div>
-                          <div>
-                            <p className="font-semibold text-gray-900">{user.name}</p>
-                            <span className={`text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wide font-medium ${
-                              user.role === 'admin' ? 'bg-gray-200 text-gray-800' : 'bg-gray-100 text-gray-600'
-                            }`}>
-                              {user.role}
-                            </span>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center space-x-2 text-gray-600">
-                          <Mail size={16} className="text-gray-400" />
-                          <span className="text-sm">{user.email}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center space-x-2 text-gray-600">
-                          <Building size={16} className="text-gray-400" />
-                          <span className="text-sm">{user.division}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          user.status === 'active' 
-                            ? 'bg-brand-success/20 text-brand-success' 
-                            : 'bg-brand-danger/20 text-brand-danger'
-                        }`}>
-                          {user.status === 'active' ? 'Aktif' : 'Non-aktif'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center space-x-2 opacity-60 group-hover:opacity-100 transition-opacity">
-                          {/* Tombol Edit */}
-                          <button 
-                            onClick={() => handleEditClick(user)}
-                            className="p-2 text-brand-gold hover:bg-brand-gold/10 rounded-lg transition-colors" 
-                            title="Edit Data"
-                          >
-                            <Edit size={18} />
-                          </button>
+  ) : (
+    filteredUsers.map((user) => (
+      <tr key={user.id} className="hover:bg-gray-50 transition-colors group">
+        <td className="px-6 py-4">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-brand-gold to-yellow-600 rounded-full flex items-center justify-center text-white font-bold shadow-md">
+              {user.name.charAt(0).toUpperCase()}
+            </div>
+            <div>
+              <p className="font-bold text-gray-900">{user.name}</p>
+              <span className={`text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wide font-bold border ${
+                user.role === 'admin' 
+                  ? 'bg-purple-100 text-purple-700 border-purple-200' 
+                  : 'bg-gray-100 text-gray-600 border-gray-200'
+              }`}>
+                {user.role}
+              </span>
+            </div>
+          </div>
+        </td>
+        <td className="px-6 py-4">
+          <div className="flex flex-col space-y-1">
+            <div className="flex items-center space-x-2 text-gray-700">
+              <Mail size={14} className="text-brand-gold" />
+              <span className="text-sm font-medium">{user.email}</span>
+            </div>
+          </div>
+        </td>
+        <td className="px-6 py-4">
+          <div className="flex items-center space-x-2 text-gray-600 bg-gray-50 px-3 py-1 rounded-lg w-fit border border-gray-100">
+            <Building size={14} className="text-gray-400" />
+            <span className="text-sm font-semibold">{user.division}</span>
+          </div>
+        </td>
+        
+        {/* --- KOLOM STATUS (DIPERBAIKI WARNANYA) --- */}
+        <td className="px-6 py-4">
+          <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${
+            user.status === 'active' 
+              ? 'bg-green-50 text-green-700 border-green-200' 
+              : 'bg-red-50 text-red-700 border-red-200'
+          }`}>
+            <span className={`w-2 h-2 rounded-full ${user.status === 'active' ? 'bg-green-500' : 'bg-red-500'}`}></span>
+            {user.status === 'active' ? 'Aktif' : 'Non-aktif'}
+          </span>
+        </td>
 
-                          {/* Tombol Reset Akses / Toggle Status */}
-                          <button 
-                            onClick={() => handleToggleStatus(user.id, user.status)}
-                            className={`p-2 rounded-lg transition-colors ${
-                              user.status === 'active' 
-                                ? 'text-brand-danger hover:bg-brand-danger/10' 
-                                : 'text-brand-success hover:bg-brand-success/10'
-                            }`}
-                            title={user.status === 'active' ? "Non-aktifkan (Blokir Akses)" : "Aktifkan Kembali"}
-                          >
-                            {user.status === 'active' ? <UserX size={18} /> : <UserCheck size={18} />}
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
+        {/* --- KOLOM AKSI (DIPERBAIKI TOMBOLNYA) --- */}
+        <td className="px-6 py-4">
+          <div className="flex items-center gap-2 opacity-100"> {/* Opacity 100 agar selalu terlihat di mobile/tablet */}
+            
+            {/* Tombol Edit */}
+            <button 
+              onClick={() => handleEditClick(user)}
+              className="group flex items-center justify-center w-8 h-8 rounded-lg border border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white hover:shadow-md transition-all duration-200" 
+              title="Edit Data"
+            >
+              <Edit size={16} />
+            </button>
+
+            {/* Tombol Reset Akses / Toggle Status */}
+            <button 
+              onClick={() => handleToggleStatus(user.id, user.status)}
+              className={`group flex items-center justify-center w-8 h-8 rounded-lg border transition-all duration-200 hover:text-white hover:shadow-md ${
+                user.status === 'active' 
+                  ? 'border-orange-200 bg-orange-50 text-orange-600 hover:bg-orange-500' 
+                  : 'border-green-200 bg-green-50 text-green-600 hover:bg-green-600'
+              }`}
+              title={user.status === 'active' ? "Non-aktifkan (Blokir Akses)" : "Aktifkan Kembali"}
+            >
+              {user.status === 'active' ? <UserX size={16} /> : <UserCheck size={16} />}
+            </button>
+            
+            {/* Tombol Delete */}
+            <button 
+              onClick={() => handleDeleteUser(user.id, user.name)}
+              className="group flex items-center justify-center w-8 h-8 rounded-lg border border-red-200 bg-red-50 text-red-600 hover:bg-red-600 hover:text-white hover:shadow-md transition-all duration-200" 
+              title="Hapus User"
+            >
+              <Trash2 size={16} />
+            </button>
+
+          </div>
+        </td>
+      </tr>
+    ))
+  )}
+</tbody>
             </table>
           </div>
         </div>

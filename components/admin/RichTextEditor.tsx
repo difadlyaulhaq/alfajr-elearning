@@ -5,9 +5,7 @@ import {
   Heading1, Heading2, Quote, Code, Image as ImageIcon,
   Eye, Save, X, Undo, Redo, Type
 } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm'; // Tambahkan ini
-import rehypeHighlight from 'rehype-highlight'; // Tambahkan ini (untuk syntax highlighting code)
+import { MarkdownRenderer } from '@/components/shared/MarkdownRenderer';
 
 interface RichTextEditorProps {
   initialValue?: string;
@@ -240,15 +238,11 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
             style={{ minHeight: '400px' }}
           />
         ) : (
-          <div className="p-6">
-            <div className="prose prose-lg max-w-none text-black">
-              <ReactMarkdown
-                remarkPlugins={[remarkGfm]} // Tambahkan plugin untuk fitur lengkap
-                rehypePlugins={[rehypeHighlight]} // Tambahkan untuk highlight code (opsional)
-              >
-                {content || '*Tidak ada konten untuk ditampilkan*'}
-              </ReactMarkdown>
-            </div>
+<div className="p-4">
+            <MarkdownRenderer
+              content={content || '*Tidak ada konten untuk ditampilkan*'}
+              className="prose prose-sm max-w-none"
+            />
           </div>
         )}
       </div>

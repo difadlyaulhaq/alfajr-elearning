@@ -14,9 +14,7 @@ import {
   Link as LinkIcon,
 } from "lucide-react";
 import toast from "react-hot-toast";
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm'; // Tambahkan ini
-import rehypeHighlight from 'rehype-highlight'; // Tambahkan ini (untuk syntax highlighting code)
+import { MarkdownRenderer } from "@/components/shared/MarkdownRenderer";
 
 interface VideoPlayerProps {
   courseId: string;
@@ -185,16 +183,8 @@ export function VideoPlayer({
       <div className="p-4 md:p-8 flex-1">
         {lesson.contentType === "text" ? (
           <div className="bg-white p-6 md:p-8 rounded-lg border">
-            <div className="prose prose-lg max-w-none text-black">
-              <h2 className="text-2xl font-bold text-black mb-4">{lesson.title}</h2>
-              <ReactMarkdown
-                remarkPlugins={[remarkGfm]} // Tambahkan plugin untuk fitur lengkap
-                rehypePlugins={[rehypeHighlight]} // Tambahkan untuk highlight code (opsional)
-              >
-                {lesson.textContent}
-              </ReactMarkdown>
+              <MarkdownRenderer content={lesson.textContent || ''} />
             </div>
-          </div>
         ) : (
           <div className="relative w-full bg-black rounded-lg overflow-hidden" style={{ paddingTop: "56.25%" }} onContextMenu={(e) => e.preventDefault()}>
             <style>{watermarkAnimation}</style>

@@ -223,23 +223,35 @@ const LearningHistoryPage = () => {
         {/* Controls Bar: Search & Filter Tabs */}
         <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 mb-8 flex flex-col md:flex-row justify-between items-center gap-4 sticky top-4 z-10">
           
-          {/* Tabs */}
-          <div className="flex p-1 bg-gray-100 rounded-lg w-full md:w-auto">
+          {/* Tabs - FIXED VERSION */}
+          <div className="flex p-1.5 bg-gray-50 rounded-lg w-full md:w-auto gap-1">
             <button 
               onClick={() => setFilter('all')}
-              className={`flex-1 md:flex-none px-6 py-2 rounded-md text-sm font-medium transition-all ${filter === 'all' ? 'bg-white text-brand-black shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+              className={`flex-1 md:flex-none px-5 py-2.5 rounded-md text-sm font-semibold transition-all ${
+                filter === 'all' 
+                  ? 'bg-gradient-to-r from-brand-gold to-yellow-600 text-black shadow-md' 
+                  : 'bg-white text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+              }`}
             >
               Semua
             </button>
             <button 
               onClick={() => setFilter('in-progress')}
-              className={`flex-1 md:flex-none px-6 py-2 rounded-md text-sm font-medium transition-all ${filter === 'in-progress' ? 'bg-white text-brand-black shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+              className={`flex-1 md:flex-none px-5 py-2.5 rounded-md text-sm font-semibold transition-all ${
+                filter === 'in-progress' 
+                  ? 'bg-gradient-to-r from-yellow-500 to-orange-500 text-white shadow-md' 
+                  : 'bg-white text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+              }`}
             >
               Sedang Berjalan
             </button>
             <button 
               onClick={() => setFilter('completed')}
-              className={`flex-1 md:flex-none px-6 py-2 rounded-md text-sm font-medium transition-all ${filter === 'completed' ? 'bg-white text-brand-black shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+              className={`flex-1 md:flex-none px-5 py-2.5 rounded-md text-sm font-semibold transition-all ${
+                filter === 'completed' 
+                  ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-md' 
+                  : 'bg-white text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+              }`}
             >
               Selesai
             </button>
@@ -253,7 +265,7 @@ const LearningHistoryPage = () => {
             <input
               type="text"
               placeholder="Cari kursus..."
-              className="block w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-lg leading-5 bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-gold/50 focus:border-brand-gold sm:text-sm transition-all"
+              className="block w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-lg leading-5 bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-gold/50 focus:border-brand-gold sm:text-sm transition-all text-gray-900"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -272,6 +284,21 @@ const LearningHistoryPage = () => {
               <CourseCard key={item.id} course={item} />
             ))}
           </div>
+        ) : history.length === 0 ? (
+          <Link href="/learning/catalog" className="block">
+            <div className="text-center py-20 px-4 bg-white rounded-2xl shadow-sm hover:shadow-lg transition-shadow border border-gray-100 border-dashed cursor-pointer hover:border-brand-gold">
+              <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                <BookOpen className="h-10 w-10 text-gray-300" />
+              </div>
+              <h3 className="mt-2 text-xl font-bold text-gray-900">Mulai Perjalanan Belajar Anda</h3>
+              <p className="mt-2 text-gray-500 max-w-sm mx-auto">
+                Anda belum terdaftar di kursus manapun. Jelajahi katalog kami untuk menemukan materi yang menarik!
+              </p>
+              <div className="mt-6 inline-flex items-center gap-2 bg-brand-black text-white font-bold py-3 px-8 rounded-xl transition shadow-lg">
+                Jelajahi Katalog
+              </div>
+            </div>
+          </Link>
         ) : (
           <div className="text-center py-20 px-4 bg-white rounded-2xl shadow-sm border border-gray-100 border-dashed">
             <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -280,25 +307,15 @@ const LearningHistoryPage = () => {
             <h3 className="mt-2 text-xl font-bold text-gray-900">Tidak ada kursus ditemukan</h3>
             <p className="mt-2 text-gray-500 max-w-sm mx-auto">
               {searchQuery 
-                ? `Tidak ada hasil untuk pencarian "${searchQuery}"`
-                : filter === 'completed' 
-                  ? "Anda belum menyelesaikan kursus apapun. Terus semangat!" 
-                  : "Anda belum mengambil kursus apapun."}
+                ? `Tidak ada hasil untuk pencarian "${searchQuery}" dengan filter yang diterapkan.`
+                : "Tidak ada kursus yang cocok dengan filter yang Anda pilih."}
             </p>
-            {filter !== 'all' && !searchQuery && (
-               <button 
-                 onClick={() => setFilter('all')}
-                 className="mt-6 text-brand-gold font-semibold hover:underline"
-               >
-                 Lihat semua kursus
-               </button>
-            )}
-            {history.length === 0 && (
-              <Link href="/learning/catalog" className="mt-6 inline-flex items-center gap-2 bg-brand-black hover:bg-gray-800 text-white font-bold py-3 px-8 rounded-xl transition shadow-lg hover:shadow-xl">
-                <BookOpen size={18} />
-                Jelajahi Katalog
-              </Link>
-            )}
+            <button 
+              onClick={() => setFilter('all')}
+              className="mt-6 text-brand-gold font-semibold hover:underline"
+            >
+              Lihat Semua Kursus
+            </button>
           </div>
         )}
       </div>

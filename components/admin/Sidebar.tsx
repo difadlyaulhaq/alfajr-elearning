@@ -146,10 +146,7 @@ const AdminSidebar = () => {
                   : 'text-gray-300 hover:bg-gray-800/50'
               }`}
             >
-              {/* Active Indicator */}
-              {isActive(item.path) && (
-                <div className="absolute left-0 top-0 h-full w-1 bg-white rounded-r-full"></div>
-              )}
+
               
               <div className="flex items-center space-x-3">
                 <div className={`p-1.5 rounded-lg transition-all ${

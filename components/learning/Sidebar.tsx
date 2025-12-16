@@ -87,10 +87,7 @@ const Sidebar = () => {
                   : 'text-gray-300 hover:bg-gray-800/30 hover:text-white'
               }`}
             >
-              {/* Active Indicator */}
-              {isCurrentPath && (
-                <div className="absolute left-0 top-0 h-full w-1 bg-white rounded-r-full shadow-lg"></div>
-              )}
+
 
               {/* Icon Container with Gradient */}
               <div className={`relative mr-3 ${isCurrentPath ? '' : 'group-hover:scale-110 transition-transform'}`}>

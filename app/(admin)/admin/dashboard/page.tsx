@@ -2,6 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import { Users, BookOpen, BarChart3, FolderKanban, Building2 } from 'lucide-react';
 import { getCoursesCount, getUsersCount, getCategoriesCount, getDivisionsCount } from '@/lib/data/stats';
+import { getRecentActivities } from '@/lib/data/activities';
 
 // --- Tipe Data ---
 interface Stat {
@@ -16,11 +17,12 @@ interface Stat {
 // --- Komponen Utama ---
 const AdminDashboard = async () => {
   // Memanggil fungsi data fetching secara langsung dan paralel
-  const [coursesCount, usersCount, categoriesCount, divisionsCount] = await Promise.all([
+  const [coursesCount, usersCount, categoriesCount, divisionsCount, recentActivities] = await Promise.all([
     getCoursesCount(),
     getUsersCount(),
     getCategoriesCount(),
-    getDivisionsCount()
+    getDivisionsCount(),
+    getRecentActivities(5) // Fetch 5 recent activities
   ]);
 
   const stats: Stat[] = [
@@ -58,11 +60,7 @@ const AdminDashboard = async () => {
     }
   ];
 
-  const recentActivities = [
-    { id: 1, user: 'Ahmad Fulan', action: 'menyelesaikan kursus SOP Pelayanan', time: '2 jam lalu' },
-    { id: 2, user: 'Siti Aminah', action: 'memulai kursus Marketing Digital', time: '5 jam lalu' },
-    { id: 3, user: 'Budi Santoso', action: 'mengupload materi baru', time: '1 hari lalu' }
-  ];
+
 
   return (
     <div className="min-h-screen bg-[#F8F9FA]">

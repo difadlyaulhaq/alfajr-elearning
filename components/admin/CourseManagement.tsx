@@ -1,13 +1,138 @@
 'use client';
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Edit, Trash2, Eye, Users, Video, X, Save, BookText, Youtube, Loader2 } from 'lucide-react';
+import { Plus, Edit, Trash2, Eye, Users, Video, X, Save, BookText, Youtube, Loader2, Link as LinkIcon } from 'lucide-react';
 import toast from 'react-hot-toast';
-import ReactMarkdown from 'react-markdown';
+import { MarkdownRenderer } from '@/components/shared/MarkdownRenderer';
 
 import RichTextEditor from '@/components/admin/RichTextEditor';
 
 import { Course, Section, Lesson, Category, User, Division } from '@/types';
+
+export const CoursePreviewModal: React.FC<{
+  previewData: Course; // Use Course type
+  onClose: () => void;
+}> = ({ previewData, onClose }) => {
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl w-full max-w-5xl h-[90vh] flex flex-col shadow-2xl">
+        <div className="flex items-center justify-between p-6 border-b">
+          <h2 className="text-xl font-bold text-black">
+            Preview Kursus: {previewData.title}
+          </h2>
+          <button onClick={onClose}>
+            <X size={24} className="text-gray-400 hover:text-red-500" />
+          </button>
+        </div>
+        
+        <div className="flex-1 overflow-y-auto p-8">
+          {/* Cover Image */}
+          {(previewData.thumbnail || previewData.coverImage) && (
+            <img
+              src={previewData.thumbnail || previewData.coverImage || "/logo-alfajr.png"}
+              alt={previewData.title}
+              className="w-full h-60 object-cover rounded-lg mb-6 shadow-lg"
+              onError={(e) => {
+                e.currentTarget.src = "/logo-alfajr.png";
+              }}
+            />
+          )}
+
+          {/* Description */}
+          {previewData.description && (
+            <div className="mb-8">
+              <h3 className="text-2xl font-bold mt-4 mb-4 text-black">Deskripsi</h3>
+              <div className="prose prose-lg max-w-none">
+                <MarkdownRenderer content={previewData.description} />
+              </div>
+            </div>
+          )}
+
+          {/* Curriculum */}
+          {previewData.sections && previewData.sections.length > 0 && (
+            <div className="mt-8">
+              <h2 className="text-3xl font-bold mb-6 text-black">Kurikulum</h2>
+              {previewData.sections.map((section: Section, sIndex: number) => (
+                <div key={section.id} className="mb-6 border-b pb-4 last:border-b-0">
+                  <h3 className="text-xl font-semibold mb-4 text-black">
+                    Bab {sIndex + 1}: {section.title}
+                  </h3>
+                  {section.lessons && section.lessons.length > 0 ? (
+                    <ul className="space-y-3">
+                      {section.lessons.map((lesson: Lesson) => (
+                        <li
+                          key={lesson.id}
+                          className="p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-gray-300 transition-colors"
+                        >
+                          <div className="flex items-center mb-3">
+                            <div className="w-8 h-8 bg-[#C5A059]/10 text-[#C5A059] flex items-center justify-center rounded mr-3 shrink-0">
+                              {lesson.contentType === "youtube" ? <Youtube size={16} /> : <BookText size={16} />}
+                            </div>
+                            <p className="font-semibold text-black text-base">
+                              {lesson.title}
+                            </p>
+                          </div>
+                          
+                          {/* Text Content Preview */}
+                          {lesson.contentType === "text" && lesson.textContent && (
+                            <div className="mt-3 pl-11">
+                              <div className="prose prose-sm max-w-none text-gray-700 line-clamp-3">
+                                <MarkdownRenderer
+                                  content={
+                                    lesson.textContent.substring(0, 200) +
+                                    (lesson.textContent.length > 200 ? "..." : "")
+                                  }
+                                />
+                              </div>
+                            </div>
+                          )}
+                          
+                          {/* YouTube Link */}
+                          {lesson.contentType === "youtube" && lesson.url && (
+                            <div className="mt-3 pl-11">
+                              <a
+                                href={lesson.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center text-blue-600 hover:text-blue-800 text-sm font-medium"
+                              >
+                                <Eye size={16} className="mr-1" />
+                                Tonton Video
+                              </a>
+                            </div>
+                          )}
+
+                          {/* Attachment */}
+                          {lesson.attachmentUrl && lesson.attachmentName && (
+                            <div className="mt-3 pl-11">
+                              <a
+                                href={lesson.attachmentUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center text-green-600 hover:text-green-800 text-sm font-medium"
+                              >
+                                <LinkIcon size={14} className="mr-1" />
+                                {lesson.attachmentName}
+                              </a>
+                            </div>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-gray-500 italic text-sm">
+                      Belum ada materi untuk bab ini.
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
 
 interface CourseManagementProps {
   initialCourses: Course[];
@@ -416,65 +541,9 @@ const CourseManagement: React.FC<CourseManagementProps> = ({ initialCourses, ini
       )}
 
       {showPreview && previewData && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl w-full max-w-5xl h-[90vh] flex flex-col shadow-2xl">
-            <div className="flex items-center justify-between p-6 border-b">
-              <h2 className="text-xl font-bold text-black">Preview Kursus: {previewData.title}</h2>
-              <button onClick={() => setShowPreview(false)}><X size={24} className="text-gray-400 hover:text-red-500" /></button>
-            </div>
-            <div className="flex-1 overflow-y-auto p-8 prose prose-lg max-w-none text-black">
-              {(previewData.thumbnail || previewData.coverImage) && (
-                <img src={previewData.thumbnail || previewData.coverImage || '/logo-alfajr.png'} alt={previewData.title} className="w-full h-60 object-cover rounded-lg mb-6" />
-              )}
-              {previewData.description && (
-                <>
-                  <h3 className="text-2xl font-bold mt-4 mb-2">Deskripsi</h3>
-                  <ReactMarkdown>{previewData.description}</ReactMarkdown>
-                </>
-              )}
-
-              {previewData.sections && previewData.sections.length > 0 && (
-                <div className="mt-8">
-                  <h2 className="text-3xl font-bold mb-4">Kurikulum</h2>
-                  {previewData.sections.map((section, sIndex) => (
-                    <div key={section.id} className="mb-6 border-b pb-4">
-                      <h3 className="text-xl font-semibold mb-3">Bab {sIndex + 1}: {section.title}</h3>
-                      {section.lessons && section.lessons.length > 0 ? (
-                        <ul className="space-y-3">
-                          {section.lessons.map((lesson) => (
-                            <li key={lesson.id} className="p-3 bg-gray-50 rounded-lg border border-gray-200">
-                              <div className="flex items-center mb-2">
-                                <div className="w-8 h-8 bg-[#C5A059]/10 text-[#C5A059] flex items-center justify-center rounded mr-3 shrink-0">
-                                  {lesson.contentType === 'youtube' ? <Youtube size={16} /> : <BookText size={16} />}
-                                </div>
-                                <p className="font-semibold text-black text-base">{lesson.title}</p>
-                              </div>
-                              {lesson.contentType === 'text' && lesson.textContent && (
-                                <div className="prose prose-sm max-w-none mt-2 text-black">
-                                  <ReactMarkdown>{lesson.textContent}</ReactMarkdown>
-                                </div>
-                              )}
-                              {lesson.contentType === 'youtube' && lesson.url && (
-                                <div className="mt-2">
-                                  <a href={lesson.url} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline text-sm">
-                                    Tonton Video
-                                  </a>
-                                </div>
-                              )}
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <p className="text-gray-500 italic">Belum ada materi untuk bab ini.</p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+        <CoursePreviewModal previewData={previewData} onClose={() => setShowPreview(false)} />
       )}
+
     </div>
   );
 };
