@@ -30,6 +30,7 @@ export const useScreenProtection = (options: ScreenProtectionOptions = {}) => {
 
   const [isBlurred, setIsBlurred] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  const [isDevToolsOpen, setIsDevToolsOpen] = useState(false); // Declare isDevToolsOpen state
   const attemptCountRef = useRef(0);
   const lastBlurTimeRef = useRef(0);
   const blurDebounceRef = useRef<NodeJS.Timeout | null>(null);
@@ -86,13 +87,15 @@ export const useScreenProtection = (options: ScreenProtectionOptions = {}) => {
       }
 
       // Chrome DevTools shortcuts
-      if (
+      const isDevToolsShortcut = 
         e.key === 'F12' ||
         (e.ctrlKey && e.shiftKey && ['I', 'J', 'C'].includes(e.key.toUpperCase())) ||
-        (e.metaKey && e.altKey && ['I', 'J', 'C'].includes(e.key.toUpperCase()))
-      ) {
+        (e.metaKey && e.altKey && ['I', 'J', 'C'].includes(e.key.toUpperCase()));
+
+      if (isDevToolsShortcut) {
         if (enableDevToolsDetection) {
-          isScreenshotAttempt = true;
+          e.preventDefault(); // Aggressively prevent default for DevTools shortcuts
+          isScreenshotAttempt = true; // Still trigger onScreenshotAttempt for logging/visual feedback
         }
       }
 
@@ -171,10 +174,10 @@ export const useScreenProtection = (options: ScreenProtectionOptions = {}) => {
       if ((widthThreshold || heightThreshold) && !devToolsOpen) {
         devToolsOpen = true;
         attemptCountRef.current++;
-        setIsBlurred(true);
+        setIsDevToolsOpen(true); // Use setIsDevToolsOpen here
       } else if (!widthThreshold && !heightThreshold && devToolsOpen) {
         devToolsOpen = false;
-        setIsBlurred(false);
+        setIsDevToolsOpen(false); // Use setIsDevToolsOpen here
       }
     };
 
@@ -207,6 +210,7 @@ export const useScreenProtection = (options: ScreenProtectionOptions = {}) => {
   return {
     isBlurred,
     isRecording,
+    isDevToolsOpen, // Add new state to returned object
     attemptCount: attemptCountRef.current,
   };
 };

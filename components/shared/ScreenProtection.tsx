@@ -38,7 +38,7 @@ export const ScreenProtection: React.FC<ScreenProtectionProps> = ({
     Array<{ top: number; left: number; rotation: number; opacity: number }>
   >([]);
 
-  const { isBlurred, isRecording, attemptCount } = useScreenProtection({
+  const { isBlurred, isRecording, isDevToolsOpen, attemptCount } = useScreenProtection({
     enableWatermark,
     enableBlurOnFocusLoss,
     enableKeyboardBlock,
@@ -178,18 +178,7 @@ export const ScreenProtection: React.FC<ScreenProtectionProps> = ({
           animation: pulse-warning 0.5s ease-in-out 3;
         }
 
-        /* High-security blur overlay */
-        .security-blur-overlay {
-          position: fixed;
-          inset: 0;
-          background: rgba(0, 0, 0, 0.95);
-          backdrop-filter: blur(30px);
-          -webkit-backdrop-filter: blur(30px);
-          z-index: 99998;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
+
 
         /* Anti-screenshot pattern */
         .anti-screenshot-pattern {
@@ -218,12 +207,12 @@ export const ScreenProtection: React.FC<ScreenProtectionProps> = ({
 
       <div
         className={`screen-protected relative ${className} ${
-          isBlurred ? 'blur-transition' : ''
+          isBlurred || isDevToolsOpen ? 'blur-transition' : '' // Add isDevToolsOpen to trigger transition
         }`}
         data-protected="true"
         style={{
-          filter: isBlurred ? 'blur(8px) brightness(0.3)' : 'none',
-          willChange: isBlurred ? 'filter' : 'auto',
+          filter: isDevToolsOpen || isBlurred ? 'brightness(0)' : 'none', // Simplified: if either is true, go black
+          willChange: isBlurred || isDevToolsOpen ? 'filter' : 'auto', // Add isDevToolsOpen
         }}
       >
         {/* Anti-Screenshot Pattern */}
@@ -251,17 +240,15 @@ export const ScreenProtection: React.FC<ScreenProtectionProps> = ({
           </div>
         )}
 
-        {/* Blur Overlay with Message */}
+        {/* Screen Hidden Overlay with Message (for blur/focus loss) */}
         {isBlurred && (
-          <div className="security-blur-overlay">
-            <div className="bg-white p-10 rounded-2xl shadow-2xl text-center max-w-md mx-4">
-              <EyeOff size={80} className="mx-auto mb-6 text-[#C5A059]" />
-              <h2 className="text-3xl font-bold text-gray-900 mb-3">
-                Konten Dilindungi
-              </h2>
-              <p className="text-gray-600 text-lg leading-relaxed">
-                Konten akan muncul kembali saat Anda kembali ke tab ini.
-                Ini adalah fitur keamanan untuk melindungi materi pembelajaran.
+          <div className="fixed inset-0 z-[99999] bg-black flex items-center justify-center text-white p-4 text-center">
+            <div className="max-w-xl">
+              <Shield size={80} className="mx-auto text-red-500 mb-6" />
+              <h2 className="text-3xl md:text-4xl font-bold mb-3">Konten Tidak Terlihat</h2>
+              <p className="text-lg md:text-xl text-gray-300">
+                Konten disembunyikan karena Anda meninggalkan halaman.
+                Kembali ke halaman ini untuk melanjutkan.
               </p>
             </div>
           </div>
