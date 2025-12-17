@@ -9,6 +9,7 @@ interface ScreenProtectionOptions {
   enableKeyboardBlock?: boolean;
   enableContextMenuBlock?: boolean;
   enableDevToolsDetection?: boolean;
+  enableDragBlock?: boolean; // New option
   watermarkText?: string;
   onScreenshotAttempt?: () => void;
   onRecordingDetected?: () => void;
@@ -22,6 +23,7 @@ export const useScreenProtection = (options: ScreenProtectionOptions = {}) => {
     enableKeyboardBlock = true,
     enableContextMenuBlock = true,
     enableDevToolsDetection = true,
+    enableDragBlock = true, // New option
     watermarkText = 'PROTECTED CONTENT',
     onScreenshotAttempt,
     onRecordingDetected,
@@ -31,10 +33,13 @@ export const useScreenProtection = (options: ScreenProtectionOptions = {}) => {
   const [isBlurred, setIsBlurred] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [isDevToolsOpen, setIsDevToolsOpen] = useState(false); // Declare isDevToolsOpen state
+  const [isViolation, setIsViolation] = useState(false); // New state for snipping tool/screenshot violation
+  const [isCoolDownActive, setIsCoolDownActive] = useState(false); // New state for security cool-down
   const attemptCountRef = useRef(0);
   const lastBlurTimeRef = useRef(0);
   const blurDebounceRef = useRef<NodeJS.Timeout | null>(null);
   const wasPlayingRef = useRef(false);
+  const coolDownTimerRef = useRef<NodeJS.Timeout | null>(null); // New ref for cool-down timer
 
   // Improved blur detection with debounce
   const handleBlur = useCallback(() => {
@@ -53,16 +58,27 @@ export const useScreenProtection = (options: ScreenProtectionOptions = {}) => {
   const handleFocus = useCallback(() => {
     if (!enableBlurOnFocusLoss) return;
 
-    // Clear debounce
+    // Clear any pending blur debounce
     if (blurDebounceRef.current) {
       clearTimeout(blurDebounceRef.current);
+      blurDebounceRef.current = null;
+    }
+    // Clear any previous cool-down timer if focus is lost and regained quickly
+    if (coolDownTimerRef.current) {
+      clearTimeout(coolDownTimerRef.current);
+      coolDownTimerRef.current = null;
     }
 
-    // Restore UI after slight delay
-    setTimeout(() => {
+    // Immediately set cool-down active when focus returns (after blur is cleared)
+    setIsCoolDownActive(true);
+    setIsBlurred(true); // Keep blurred during cool-down
+
+    // Restore UI after cool-down delay
+    coolDownTimerRef.current = setTimeout(() => {
       setIsBlurred(false);
-    }, 300);
-  }, [enableBlurOnFocusLoss, videoElementRef]);
+      setIsCoolDownActive(false);
+    }, 4000); // 4 seconds cool-down (between 3-5s as requested)
+  }, [enableBlurOnFocusLoss, setIsCoolDownActive, setIsBlurred]);
 
   // Enhanced keyboard detection
   useEffect(() => {
@@ -103,6 +119,9 @@ export const useScreenProtection = (options: ScreenProtectionOptions = {}) => {
         e.preventDefault();
         attemptCountRef.current++;
         
+        // --- Aggressive Screenshot Violation Handling ---
+        setIsViolation(true); // Immediately flag as violation
+        
         // Clear clipboard
         try {
           navigator.clipboard.writeText('').catch(() => {});
@@ -110,7 +129,12 @@ export const useScreenProtection = (options: ScreenProtectionOptions = {}) => {
           // Clipboard API not available
         }
         
-        onScreenshotAttempt?.();
+        // Clear violation after 15 seconds
+        setTimeout(() => {
+          setIsViolation(false);
+        }, 15000); // 15 seconds penalty
+        
+        onScreenshotAttempt?.(); // Still call this for logging/toast/brief blackout
       }
     };
 
@@ -148,12 +172,8 @@ export const useScreenProtection = (options: ScreenProtectionOptions = {}) => {
     if (!enableContextMenuBlock) return;
 
     const handleContextMenu = (e: MouseEvent) => {
-      // Only block on protected elements
-      const target = e.target as HTMLElement;
-      if (target.closest('[data-protected="true"]')) {
-        e.preventDefault();
-        attemptCountRef.current++;
-      }
+      e.preventDefault(); // Always prevent default if blocking is enabled
+      attemptCountRef.current++;
     };
 
     document.addEventListener('contextmenu', handleContextMenu);
@@ -187,16 +207,15 @@ export const useScreenProtection = (options: ScreenProtectionOptions = {}) => {
 
   // Prevent drag operations
   useEffect(() => {
+    if (!enableDragBlock) return;
+
     const handleDragStart = (e: DragEvent) => {
-      const target = e.target as HTMLElement;
-      if (target.closest('[data-protected="true"]')) {
-        e.preventDefault();
-      }
+      e.preventDefault(); // Always prevent default if blocking is enabled
     };
 
     document.addEventListener('dragstart', handleDragStart);
     return () => document.removeEventListener('dragstart', handleDragStart);
-  }, []);
+  }, [enableDragBlock]); // Add enableDragBlock to dependency array
 
   // Cleanup on unmount
   useEffect(() => {
@@ -210,7 +229,9 @@ export const useScreenProtection = (options: ScreenProtectionOptions = {}) => {
   return {
     isBlurred,
     isRecording,
-    isDevToolsOpen, // Add new state to returned object
+    isDevToolsOpen,
+    isViolation,
+    isCoolDownActive, // Add new state to returned object
     attemptCount: attemptCountRef.current,
   };
 };
