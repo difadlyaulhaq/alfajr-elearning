@@ -15,7 +15,6 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { MarkdownRenderer } from "@/components/shared/MarkdownRenderer";
-import ScreenProtection from '@/components/shared/ScreenProtection';
 
 interface VideoPlayerProps {
   courseId: string;
@@ -39,8 +38,6 @@ export function VideoPlayer({
   const [isUpdating, setIsUpdating] = useState(false);
   const [player, setPlayer] = useState<YT.Player | null>(null);
   const [progressInterval, setProgressInterval] = useState<NodeJS.Timeout | null>(null);
-  const [watermarkPosition, setWatermarkPosition] = useState({ top: '10%', left: '10%' }); // Initial position
-  const watermarkIntervalRef = useRef<NodeJS.Timeout | null>(null);
   
   // Ref for the video container (YouTube iframe parent)
   const videoContainerRef = useRef<HTMLDivElement>(null);
@@ -61,38 +58,6 @@ export function VideoPlayer({
       }
     };
   }, [progressInterval]);
-
-  // Floating watermark movement effect
-  useEffect(() => {
-    // Only run if user is logged in and it's a video lesson
-    if (!user || lesson.contentType !== 'youtube' || !videoContainerRef.current) {
-        return;
-    }
-
-    const moveWatermark = () => {
-        if (videoContainerRef.current) {
-            const containerRect = videoContainerRef.current.getBoundingClientRect();
-            const watermarkWidth = 200; // Approximate width of watermark text
-            const watermarkHeight = 30; // Approximate height
-
-            const newTop = Math.random() * (containerRect.height - watermarkHeight);
-            const newLeft = Math.random() * (containerRect.width - watermarkWidth);
-
-            setWatermarkPosition({ top: `${newTop}px`, left: `${newLeft}px` });
-        }
-    };
-
-    // Initial position
-    moveWatermark();
-    // Move every few seconds
-    watermarkIntervalRef.current = setInterval(moveWatermark, 5000); // Move every 5 seconds
-
-    return () => {
-        if (watermarkIntervalRef.current) {
-            clearInterval(watermarkIntervalRef.current);
-        }
-    };
-  }, [user, lesson.contentType, videoContainerRef, lesson.id]);
 
   const getYouTubeId = (url: string) => {
     if (!url) return null;
@@ -229,16 +194,6 @@ export function VideoPlayer({
   }
 
   return (
-    <ScreenProtection
-      userEmail={user?.email}
-      videoElementRef={videoElementRef}
-      enableWatermark={true}
-      enableBlurOnFocusLoss={true}
-      enableKeyboardBlock={true}
-      enableContextMenuBlock={true}
-      enableDevToolsDetection={true}
-      showWarningOnAttempt={true}
-    >
       <div className="flex-1 flex flex-col bg-[#F8F9FA]">
         <header className="bg-white p-4 border-b flex items-center justify-between sticky top-0 z-10">
           <div className="flex-1">
@@ -270,14 +225,6 @@ export function VideoPlayer({
                 id={`youtube-player-${lesson.id}`} 
                 className="absolute top-0 left-0 w-full h-full" 
               />
-              {user && lesson.contentType === 'youtube' && (
-                <div 
-                  className="absolute text-white/40 font-bold select-none pointer-events-none whitespace-nowrap z-10"
-                  style={{ top: watermarkPosition.top, left: watermarkPosition.left, fontSize: '1.5rem' }}
-                >
-                  {user.email || user.name || 'Protected Content'}
-                </div>
-              )}
             </div>
           )}
 
@@ -336,6 +283,5 @@ export function VideoPlayer({
           </div>
         </div>
       </div>
-    </ScreenProtection>
   );
 }
