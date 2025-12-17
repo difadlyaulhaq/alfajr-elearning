@@ -41,7 +41,7 @@ export const ScreenProtection: React.FC<ScreenProtectionProps> = ({
     Array<{ top: number; left: number; rotation: number; opacity: number }>
   >([]);
 
-  const { isBlurred, isRecording, isDevToolsOpen, isViolation, isCoolDownActive, attemptCount } = useScreenProtection({
+  const { isBlurred, isRecording, isDevToolsOpen, isViolation, isCoolDownActive, countdown, violationType, attemptCount } = useScreenProtection({
     enableWatermark,
     enableBlurOnFocusLoss,
     enableKeyboardBlock,
@@ -86,25 +86,27 @@ export const ScreenProtection: React.FC<ScreenProtectionProps> = ({
     },
   });
 
-  // Generate floating watermark positions
+  // Generate floating watermark positions (optimized untuk performa)
   useEffect(() => {
     if (!enableWatermark) return;
 
     const generatePositions = () => {
       const positions = [];
-      for (let i = 0; i < 4; i++) {
+      // Kurangi jumlah watermark dari 4 menjadi 3 untuk mengurangi beban rendering
+      for (let i = 0; i < 3; i++) {
         positions.push({
-          top: Math.random() * 90,
-          left: Math.random() * 90,
-          rotation: Math.random() * 360,
-          opacity: 0, // Placeholder for TypeScript, actual opacity is fixed in style
+          top: Math.random() * 85 + 5, // 5-90%
+          left: Math.random() * 85 + 5, // 5-90%
+          rotation: Math.random() * 30 - 15, // -15 to 15 degrees (lebih subtle)
+          opacity: 0,
         });
       }
       setWatermarkPositions(positions);
     };
 
     generatePositions();
-    const interval = setInterval(generatePositions, 20000);
+    // Perpanjang interval dari 20s ke 30s untuk mengurangi re-render
+    const interval = setInterval(generatePositions, 30000);
     return () => clearInterval(interval);
   }, [enableWatermark]);
 
@@ -135,36 +137,36 @@ export const ScreenProtection: React.FC<ScreenProtectionProps> = ({
         }
 
         .blur-transition {
-          transition: filter 0.3s ease-out, backdrop-filter 0.3s ease-out;
+          transition: filter 0.2s ease-out;
           will-change: filter;
         }
 
+        /* Animasi watermark yang lebih ringan dan smooth */
         @keyframes float-watermark {
           0%, 100% { 
-            transform: translateY(0px) translateX(0px); 
+            transform: translate3d(0, 0, 0); 
           }
           25% { 
-            transform: translateY(-12px) translateX(8px); 
+            transform: translate3d(6px, -8px, 0); 
           }
           50% { 
-            transform: translateY(0px) translateX(-8px); 
+            transform: translate3d(-6px, 0, 0); 
           }
           75% { 
-            transform: translateY(12px) translateX(8px); 
+            transform: translate3d(6px, 8px, 0); 
           }
         }
 
         .watermark-text {
-          animation: float-watermark 30s ease-in-out infinite;
+          animation: float-watermark 25s ease-in-out infinite;
           pointer-events: none;
           font-family: 'Arial', sans-serif;
           font-weight: 600;
-          text-shadow: 
-            1px 1px 2px rgba(0,0,0,0.1),
-            -1px -1px 2px rgba(255,255,255,0.1);
+          text-shadow: 1px 1px 2px rgba(0,0,0,0.15);
           will-change: transform;
           backface-visibility: hidden;
           transform: translateZ(0);
+          -webkit-font-smoothing: antialiased;
         }
 
         @keyframes pulse-warning {
@@ -173,18 +175,32 @@ export const ScreenProtection: React.FC<ScreenProtectionProps> = ({
             opacity: 1; 
           }
           50% { 
-            transform: scale(1.05); 
-            opacity: 0.9; 
+            transform: scale(1.03); 
+            opacity: 0.95; 
           }
         }
 
         .warning-pulse {
-          animation: pulse-warning 0.5s ease-in-out 3;
+          animation: pulse-warning 0.4s ease-in-out 2;
         }
 
+        /* Countdown animation */
+        @keyframes countdown-pulse {
+          0%, 100% { 
+            transform: scale(1);
+            opacity: 1;
+          }
+          50% { 
+            transform: scale(1.05);
+            opacity: 0.9;
+          }
+        }
 
+        .countdown-circle {
+          animation: countdown-pulse 1s ease-in-out infinite;
+        }
 
-        /* Anti-screenshot pattern */
+        /* Anti-screenshot pattern yang lebih ringan */
         .anti-screenshot-pattern {
           position: fixed;
           inset: 0;
@@ -192,20 +208,21 @@ export const ScreenProtection: React.FC<ScreenProtectionProps> = ({
             repeating-linear-gradient(
               0deg,
               transparent,
-              transparent 2px,
-              rgba(0,0,0,0.008) 2px,
-              rgba(0,0,0,0.008) 4px
+              transparent 3px,
+              rgba(0,0,0,0.005) 3px,
+              rgba(0,0,0,0.005) 6px
             ),
             repeating-linear-gradient(
               90deg,
               transparent,
-              transparent 2px,
-              rgba(0,0,0,0.008) 2px,
-              rgba(0,0,0,0.008) 4px
+              transparent 3px,
+              rgba(0,0,0,0.005) 3px,
+              rgba(0,0,0,0.005) 6px
             );
           pointer-events: none;
-          z-index: 999997; // Increased z-index for global coverage
+          z-index: 999997;
           mix-blend-mode: multiply;
+          opacity: 0.8;
         }
       `}</style>
 
@@ -213,7 +230,7 @@ export const ScreenProtection: React.FC<ScreenProtectionProps> = ({
         {/* Anti-Screenshot Pattern */}
         <div className="anti-screenshot-pattern" />
 
-        {/* Floating Watermarks */}
+        {/* Floating Watermarks (Optimized) */}
         {enableWatermark && watermarkPositions.length > 0 && (
           <div className="fixed inset-0 pointer-events-none z-[999996] overflow-hidden">
             {watermarkPositions.map((pos, index) => (
@@ -224,9 +241,9 @@ export const ScreenProtection: React.FC<ScreenProtectionProps> = ({
                   top: `${pos.top}%`,
                   left: `${pos.left}%`,
                   transform: `rotate(${pos.rotation}deg) translateZ(0)`,
-                  opacity: 0.4, // Fixed opacity as per plan
-                  fontSize: '18px',
-                  animationDelay: `${index * 7.5}s`,
+                  opacity: 0.35,
+                  fontSize: '16px',
+                  animationDelay: `${index * 8.3}s`,
                 }}
               >
                 {displayWatermark}
@@ -235,58 +252,86 @@ export const ScreenProtection: React.FC<ScreenProtectionProps> = ({
           </div>
         )}
 
-        {/* Combined Global Security Overlay (Blackout for isViolation, isDevToolsOpen, isBlurred) */}
-                    {(isViolation || isDevToolsOpen || isBlurred || isCoolDownActive) && ( 
-                      <div className="fixed inset-0 z-[999999] bg-black flex items-center justify-center text-white p-4 text-center pointer-events-auto"> {/* pointer-events: auto to block interaction */}            <div className="max-w-xl">
+        {/* Combined Global Security Overlay (Optimized with Countdown) */}
+        {(isViolation || isDevToolsOpen || isBlurred || isCoolDownActive) && ( 
+          <div 
+            className="fixed inset-0 z-[999999] bg-black flex items-center justify-center text-white p-4 text-center pointer-events-auto transition-opacity duration-200" 
+            style={{ opacity: 0.98 }}
+          >
+            <div className="max-w-xl">
               {isViolation && (
                 <>
-                  <Shield size={80} className="mx-auto text-red-500 mb-6" />
-                  <h2 className="text-3xl md:text-4xl font-bold mb-3">PELANGGARAN TERDETEKTSI!</h2>
-                  <p className="text-lg md:text-xl text-gray-300">
-                    Aktivitas mencurigakan (misalnya, percobaan screenshot) terdeteksi.
-                    Konten akan disembunyikan sementara sebagai tindakan keamanan.
+                  <Shield size={64} className="mx-auto text-red-500 mb-4" />
+                  <h2 className="text-2xl md:text-3xl font-bold mb-3">PELANGGARAN TERDETEKSI!</h2>
+                  <p className="text-base md:text-lg text-gray-300">
+                    Aktivitas mencurigakan terdeteksi (percobaan screenshot/rekam layar).
+                    Konten disembunyikan sebagai tindakan keamanan.
                   </p>
-                  <p className="text-md mt-4 text-gray-400">
-                    Anda dapat melanjutkan setelah beberapa saat.
-                  </p>
+                  {countdown > 0 && (
+                    <div className="mt-6">
+                      <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-red-500/20 border-4 border-red-500 mb-3 countdown-circle">
+                        <span className="text-4xl font-bold">{countdown}</span>
+                      </div>
+                      <p className="text-sm text-gray-400">
+                        Anda dapat melanjutkan setelah <span className="text-white font-semibold">{countdown} detik</span>
+                      </p>
+                    </div>
+                  )}
                 </>
               )}
-              {isDevToolsOpen && !isViolation && ( /* Prioritize violation message */
+              {isDevToolsOpen && !isViolation && (
                 <>
-                  <Shield size={80} className="mx-auto text-red-500 mb-6" />
-                  <h2 className="text-3xl md:text-4xl font-bold mb-3">Deteksi DevTools!</h2>
-                  <p className="text-lg md:text-xl text-gray-300">
-                    Penggunaan Developer Tools terdeteksi. Untuk melanjutkan, harap tutup Developer Tools Anda.
-                    Konten tidak akan ditampilkan saat Developer Tools terbuka.
+                  <Shield size={64} className="mx-auto text-red-500 mb-4" />
+                  <h2 className="text-2xl md:text-3xl font-bold mb-3">Developer Tools Terdeteksi!</h2>
+                  <p className="text-base md:text-lg text-gray-300">
+                    Harap tutup Developer Tools untuk melanjutkan.
                   </p>
+                  <div className="mt-6 flex items-center justify-center gap-2">
+                    <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
+                    <p className="text-sm text-gray-400">
+                      Menunggu Developer Tools ditutup...
+                    </p>
+                  </div>
                 </>
               )}
-              {isBlurred && !isViolation && !isDevToolsOpen && ( /* Prioritize violation, then devtools */
+              {(isBlurred || isCoolDownActive) && !isViolation && !isDevToolsOpen && (
                 <>
-                  <Shield size={80} className="mx-auto text-red-500 mb-6" />
-                  <h2 className="text-3xl md:text-4xl font-bold mb-3">Konten Tidak Terlihat</h2>
-                  <p className="text-lg md:text-xl text-gray-300">
-                    Konten disembunyikan karena Anda meninggalkan halaman.
-                    Kembali ke halaman ini untuk melanjutkan.
-                  </p>
+                  <Shield size={64} className="mx-auto text-yellow-500 mb-4" />
+                  <h2 className="text-2xl md:text-3xl font-bold mb-3">Konten Disembunyikan</h2>
+                  <p className="text-base md:text-lg text-gray-300">
+                    {isBlurred && !isCoolDownActive 
+                      ? 'Konten disembunyikan karena Anda meninggalkan halaman. Kembali ke halaman ini untuk melanjutkan.'
+                      : 'Memverifikasi keamanan sebelum menampilkan konten...'}</p>
+                  {countdown > 0 && isCoolDownActive && (
+                    <div className="mt-6">
+                      <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-yellow-500/20 border-4 border-yellow-500 mb-3 countdown-circle">
+                        <span className="text-4xl font-bold">{countdown}</span>
+                      </div>
+                      <p className="text-sm text-gray-400">
+                        Anda dapat melanjutkan setelah <span className="text-white font-semibold">{countdown} detik</span>
+                      </p>
+                    </div>
+                  )}
                 </>
               )}
             </div>
           </div>
         )}
 
-                    {/* Recording Warning */}
-                    {isRecording && (
-                      <div className="fixed top-6 right-6 z-[999999] bg-red-500 text-white px-6 py-3 rounded-xl shadow-2xl flex items-center gap-3 animate-pulse">            <Eye size={24} />
-            <span className="font-bold text-lg">Recording Detected!</span>
+        {/* Recording Warning (Optimized) */}
+        {isRecording && (
+          <div className="fixed top-4 right-4 z-[999999] bg-red-500 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 animate-pulse">
+            <Eye size={20} />
+            <span className="font-semibold text-sm">Recording Terdeteksi!</span>
           </div>
         )}
 
-                    {/* Warning Toast */}
-                    {showWarning && (
-                      <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[999999] bg-red-600 text-white px-8 py-4 rounded-xl shadow-2xl warning-pulse">            <div className="flex items-center gap-4">
-              <Shield size={28} />
-              <span className="font-bold text-xl">{warningMessage}</span>
+        {/* Warning Toast (Optimized) */}
+        {showWarning && (
+          <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[999999] bg-red-600 text-white px-6 py-3 rounded-lg shadow-xl warning-pulse">
+            <div className="flex items-center gap-3">
+              <Shield size={22} />
+              <span className="font-bold text-base">{warningMessage}</span>
             </div>
           </div>
         )}
