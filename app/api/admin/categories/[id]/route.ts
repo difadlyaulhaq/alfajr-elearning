@@ -55,6 +55,24 @@ export async function PATCH(
 
     await categoryRef.update(updateData);
 
+    // Jika nama kategori diubah, perbarui semua kursus terkait
+    if (updateData.name && updateData.name !== categoryDoc.data()?.name) {
+      console.log(`[API CATEGORY PATCH] Nama kategori berubah. Memperbarui kursus dengan categoryId: ${id}...`);
+      const coursesRef = adminDb.collection('courses');
+      const coursesToUpdateSnapshot = await coursesRef.where('categoryId', '==', id).get();
+
+      if (!coursesToUpdateSnapshot.empty) {
+        const batch = adminDb.batch();
+        coursesToUpdateSnapshot.forEach(doc => {
+          batch.update(doc.ref, { categoryName: updateData.name });
+        });
+        await batch.commit();
+        console.log(`[API CATEGORY PATCH] Berhasil memperbarui ${coursesToUpdateSnapshot.size} kursus dengan nama kategori baru.`);
+      } else {
+        console.log('[API CATEGORY PATCH] Tidak ada kursus yang ditemukan dengan categoryId ini. Tidak ada kursus yang diperbarui.');
+      }
+    }
+
     console.log('[API CATEGORY PATCH] Category updated successfully');
 
     return NextResponse.json({

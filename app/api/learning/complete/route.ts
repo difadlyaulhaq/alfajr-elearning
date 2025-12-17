@@ -52,12 +52,20 @@ export async function POST(req: Request) {
       completedLessonIds.push(lessonId);
     }
 
-    // 5. Hitung Persentase Baru
-    const progressPercentage = totalLessons > 0 
-      ? Math.round((completedLessonIds.length / totalLessons) * 100) 
-      : 0;
+    // 5. Hitung progres baru
+    const numCompleted = completedLessonIds.length;
+    
+    // Tentukan status selesai berdasarkan perbandingan jumlah, bukan persentase, untuk menghindari eror pembulatan.
+    const isCompleted = totalLessons > 0 && numCompleted >= totalLessons;
 
-    const isCompleted = progressPercentage >= 100;
+    // Hitung persentase, dan pastikan nilainya 100 jika sudah selesai.
+    let progressPercentage = totalLessons > 0 
+      ? Math.round((numCompleted / totalLessons) * 100)
+      : 0;
+      
+    if (isCompleted) {
+      progressPercentage = 100;
+    }
     
     const updateData: any = {
       courseId,

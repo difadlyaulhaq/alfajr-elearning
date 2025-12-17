@@ -5,86 +5,7 @@ import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { BookOpen, Compass, CheckCircle, Loader2, Award, Target, Sparkles } from 'lucide-react';
 import { Course, Progress } from '@/types';
-
-// --- Helper Components ---
-const StatCard: React.FC<{ title: string; value: string; icon: React.ElementType; color: string; bgColor: string; description: string }> = 
-({ title, value, icon: Icon, color, bgColor, description }) => (
-  <div className="group bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden border border-gray-100 hover:scale-105">
-    <div className={`h-2 bg-gradient-to-r ${color}`}></div>
-    <div className="p-6">
-      <div className="flex items-start justify-between mb-4">
-        <div className={`${bgColor} p-3 rounded-xl group-hover:scale-110 transition-transform`}>
-          <Icon className={`bg-gradient-to-br ${color} bg-clip-text text-transparent`} size={28} />
-        </div>
-      </div>
-      <p className="text-4xl font-bold bg-gradient-to-br from-gray-900 to-gray-600 bg-clip-text text-transparent mb-2">
-        {value}
-      </p>
-      <p className="text-sm font-medium text-gray-600">{title}</p>
-      <p className="text-xs text-gray-400 mt-1">{description}</p>
-    </div>
-  </div>
-);
-
-const CourseCard: React.FC<{ course: Course; progress?: Progress }> = ({ course, progress }) => {
-  const isCompleted = progress?.status === 'completed';
-  const isInProgress = progress?.status === 'in-progress';
-
-  return (
-    <Link href={`/learning/course/${course.id}`} key={course.id}>
-      <div className="group bg-white rounded-xl shadow-md hover:shadow-2xl transition-all overflow-hidden border-2 border-gray-100 hover:border-brand-gold hover:scale-105 duration-300 h-full flex flex-col">
-        <div className="h-48 bg-gradient-to-br from-brand-gold/10 to-yellow-100/20 relative overflow-hidden">
-          {course.thumbnail || course.coverImage ? (
-            <img src={course.thumbnail || course.coverImage} alt={course.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-6xl">📚</div>
-          )}
-          <div className="absolute top-3 right-3 bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-full text-xs font-bold text-black shadow-lg border border-brand-gold/20">
-            {course.categoryName}
-          </div>
-          {isCompleted && (
-            <div className="absolute top-3 left-3 bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1">
-              <CheckCircle size={12} />
-              <span>Selesai</span>
-            </div>
-          )}
-        </div>
-        <div className="p-5 flex flex-col flex-grow">
-          <h3 className="font-bold text-base text-black mb-2 line-clamp-2 group-hover:text-brand-gold transition-colors" title={course.title}>
-            {course.title}
-          </h3>
-          <p className="text-xs text-gray-600 line-clamp-2 mb-4 flex-grow">{course.description}</p>
-          
-          {isInProgress && (
-            <div className="mb-3">
-              <div className="flex justify-between items-center mb-1">
-                <span className="text-xs font-semibold text-yellow-600">Dalam Pengerjaan</span>
-                <span className="text-xs font-bold text-black">{progress.progress}%</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-1.5">
-                <div 
-                  className="bg-yellow-500 h-1.5 rounded-full"
-                  style={{ width: `${progress.progress}%` }}
-                />
-              </div>
-            </div>
-          )}
-
-          <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-            <div className="text-xs text-gray-500 flex items-center gap-1">
-              <BookOpen size={14} className="text-brand-gold" />
-              {course.totalVideos || 0} Materi
-            </div>
-            <span className="text-xs font-semibold text-black group-hover:text-yellow-600">
-              {isCompleted ? "Lihat Lagi" : "Mulai Belajar"} →
-            </span>
-          </div>
-        </div>
-      </div>
-    </Link>
-  );
-};
-
+import { CourseCard } from '@/components/learning/CourseCard';
 
 // --- Main Component ---
 const EmployeeDashboardPage = () => {
@@ -131,39 +52,6 @@ const EmployeeDashboardPage = () => {
     }
   }, [user, isAuthLoading]);
   
-  const stats = useMemo(() => {
-    const progressValues = Object.values(progress);
-    const inProgressCount = progressValues.filter(p => p.status === 'in-progress').length;
-    const completedCount = progressValues.filter(p => p.status === 'completed').length;
-    
-    return [
-      {
-        title: 'Kursus Diikuti',
-        value: inProgressCount.toString(),
-        icon: BookOpen,
-        color: 'from-brand-gold to-yellow-600',
-        bgColor: 'bg-brand-gold/10',
-        description: 'Kursus aktif'
-      },
-      {
-        title: 'Kursus Selesai',
-        value: completedCount.toString(),
-        icon: CheckCircle,
-        color: 'from-brand-success to-green-600',
-        bgColor: 'bg-brand-success/10',
-        description: 'Telah diselesaikan'
-      },
-      {
-        title: 'Sertifikat',
-        value: completedCount.toString(),
-        icon: Award,
-        color: 'from-brand-warning to-yellow-500',
-        bgColor: 'bg-brand-warning/10',
-        description: 'Telah diraih'
-      },
-    ];
-  }, [progress]);
-
   const ongoingCourses = useMemo(() => {
     return courses.filter(c => progress[c.id] && progress[c.id].status === 'in-progress');
   }, [courses, progress]);
@@ -204,13 +92,6 @@ const EmployeeDashboardPage = () => {
       </div>
 
       <div className="p-8 -mt-6">
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          {stats.map((stat, index) => (
-            <StatCard key={index} {...stat} />
-          ))}
-        </div>
-
         {/* Main Area */}
         <div className="space-y-8">
             {/* Ongoing Courses */}
@@ -223,9 +104,11 @@ const EmployeeDashboardPage = () => {
                         <p className="text-sm text-gray-600 mt-1">Selesaikan kursus yang sedang kamu ikuti</p>
                     </div>
                     <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {ongoingCourses.map(course => (
-                            <CourseCard key={course.id} course={course} progress={progress[course.id]} />
-                        ))}
+                        {ongoingCourses.map(course => {
+                            const progressData = progress[course.id];
+                            const combinedData = { ...course, ...progressData };
+                            return <CourseCard key={course.id} course={combinedData} />
+                        })}
                     </div>
                 </div>
             )}
@@ -247,9 +130,11 @@ const EmployeeDashboardPage = () => {
                 ) : (
                     <div className="p-6">
                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {courses.slice(0, 6).map((course) => (
-                                <CourseCard key={course.id} course={course} progress={progress[course.id]} />
-                            ))}
+                            {courses.slice(0, 6).map((course) => {
+                                const progressData = progress[course.id] || { status: 'not-started', progress: 0 };
+                                const combinedData = { ...course, ...progressData };
+                                return <CourseCard key={course.id} course={combinedData} />
+                            })}
                         </div>
                         <div className="text-center mt-6">
                              <Link href="/learning/catalog" className="px-8 py-3 bg-gradient-to-r from-brand-gold to-yellow-600 text-black rounded-xl hover:shadow-lg transition-all font-semibold">

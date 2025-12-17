@@ -41,11 +41,11 @@ export const CourseCard: React.FC<{ course: Omit<Course, 'status'> & Progress }>
             <img 
               src={course.thumbnail || course.coverImage} 
               alt={course.title} 
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-90 group-hover:opacity-100" 
+              className="w-full h-full text-[#C5A059] object-cover group-hover:scale-105 transition-transform duration-500 opacity-90 group-hover:opacity-100" 
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-brand-black to-gray-800">
-              <BookOpen className="text-brand-gold opacity-50" size={48} />
+              <BookOpen className="text-black opacity-50" size={48} />
             </div>
           )}
           
@@ -54,7 +54,7 @@ export const CourseCard: React.FC<{ course: Omit<Course, 'status'> & Progress }>
 
           {/* Category Badge */}
           <div className="absolute top-3 right-3">
-             <span className="px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider bg-brand-gold text-black shadow-lg">
+             <span className="px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider bg-white text-[#C5A059] shadow-lg">
               {course.categoryName}
              </span>
           </div>
@@ -67,25 +67,25 @@ export const CourseCard: React.FC<{ course: Omit<Course, 'status'> & Progress }>
 
         {/* Content Area */}
         <div className="p-5 flex flex-col flex-grow relative">
-          <h3 className="font-bold text-lg text-brand-black mb-2 line-clamp-2 leading-snug group-hover:text-brand-gold transition-colors">
+          <h3 className="font-bold text-lg text-black mb-2 line-clamp-2 leading-snug group-hover:text-brand-gold transition-colors">
             {course.title}
           </h3>
           
-          <div className="text-xs text-gray-500 mb-4 line-clamp-2 flex-grow">
+          <div className="text-xs text-black mb-4 line-clamp-2 flex-grow">
             {course.description || "Tidak ada deskripsi tersedia."}
           </div>
 
           {/* Progress Section */}
-          <div className="space-y-3 mt-auto pt-4 border-t border-gray-100">
+          <div className="space-y-3 mt-auto pt-4 border-t border-gray-500">
             {!isCompleted ? (
               <div>
                 <div className="flex justify-between text-xs mb-1.5 font-medium">
                   <span className="text-gray-500">Progress Belajar</span>
-                  <span className="text-brand-black">{course.progress}%</span>
+                  <span className="text-black">{course.progress}%</span>
                 </div>
-                <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+                <div className="w-full bg-gray-300 rounded-full h-2 overflow-hidden">
                   <div 
-                    className="bg-brand-gold h-full rounded-full transition-all duration-1000 ease-out"
+                    className="bg-[#C5A059] h-full rounded-full transition-all duration-1000 ease-out"
                     style={{ width: `${course.progress}%` }}
                   />
                 </div>
@@ -102,7 +102,7 @@ export const CourseCard: React.FC<{ course: Omit<Course, 'status'> & Progress }>
                   <PlayCircle size={14} />
                   <span>{course.totalVideos || 0} Materi</span>
                </div>
-               <span className="text-xs font-bold text-brand-gold group-hover:translate-x-1 transition-transform inline-flex items-center">
+               <span className="text-xs font-bold text-[#C5A059] group-hover:translate-x-1 transition-transform inline-flex items-center">
                   {isCompleted ? "Lihat Kembali" : "Lanjutkan"} 
                   <span className="ml-1">→</span>
                </span>

@@ -64,7 +64,6 @@ export async function getMyEnrolledCourses(userId: string): Promise<CourseWithPr
     if (progressDoc.exists) {
       progressData = progressDoc.data() as Progress;
     } else {
-      // If no progress doc exists, create a default "not-started" state
       progressData = {
         userId,
         courseId: course.id,
@@ -75,10 +74,27 @@ export async function getMyEnrolledCourses(userId: string): Promise<CourseWithPr
       };
     }
 
-    coursesWithProgress.push({
+    const combinedData = {
       ...course,
-      ...progressData
-    });
+      ...progressData,
+    };
+
+    // Sanitize Firestore Timestamps and JS Dates into serializable strings
+    const sanitizedData = Object.fromEntries(
+      Object.entries(combinedData).map(([key, value]: [string, any]) => {
+        // Check for Firestore Timestamp
+        if (value && typeof value.toDate === 'function') {
+          return [key, value.toDate().toISOString()];
+        }
+        // Check for Javascript Date
+        if (value instanceof Date) {
+          return [key, value.toISOString()];
+        }
+        return [key, value];
+      })
+    );
+
+    coursesWithProgress.push(sanitizedData as CourseWithProgress);
   }
 
   return coursesWithProgress;

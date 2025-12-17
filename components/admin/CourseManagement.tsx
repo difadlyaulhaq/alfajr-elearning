@@ -152,34 +152,42 @@ const CourseManagement: React.FC<CourseManagementProps> = ({ initialCourses, ini
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    const fetchAllUsersAndDivisions = async () => {
+    const fetchRequiredData = async () => {
       try {
-        const [usersRes, divisionsRes] = await Promise.all([
+        const [usersRes, divisionsRes, categoriesRes] = await Promise.all([
           fetch('/api/admin/users'),
-          fetch('/api/admin/divisions')
+          fetch('/api/admin/divisions'),
+          fetch('/api/admin/categories'),
         ]);
 
         const usersData = await usersRes.json();
         const divisionsData = await divisionsRes.json();
+        const categoriesData = await categoriesRes.json();
 
         if (usersData.success) {
           setAllUsers(usersData.data);
         } else {
-          toast.error('Failed to fetch users.');
+          toast.error('Gagal memuat data pengguna.');
         }
 
         if (divisionsData.success) {
           setAllDivisions(divisionsData.data);
         } else {
-          toast.error('Failed to fetch divisions.');
+          toast.error('Gagal memuat data divisi.');
+        }
+        
+        if (categoriesData.success) {
+          setCategories(categoriesData.data);
+        } else {
+          toast.error('Gagal memuat data kategori.');
         }
       } catch (error) {
-        console.error('Error fetching users or divisions:', error);
-        toast.error('Error fetching users or divisions.');
+        console.error('Error fetching required data:', error);
+        toast.error('Terjadi kesalahan saat memuat data esensial.');
       }
     };
 
-    fetchAllUsersAndDivisions();
+    fetchRequiredData();
   }, []); // Run once on component mount
   
   const [showModal, setShowModal] = useState(false);
@@ -191,6 +199,18 @@ const CourseManagement: React.FC<CourseManagementProps> = ({ initialCourses, ini
 
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState<Partial<Course>>({
+    title: '',
+    categoryId: '',
+    level: 'basic',
+    description: '',
+    coverImage: '',
+    thumbnail: '',
+    status: 'draft',
+    sections: [],
+    enrolledUserIds: [],
+    enrolledDivisionIds: []
+  });
+  const [initialFormData, setInitialFormData] = useState<Partial<Course>>({
     title: '',
     categoryId: '',
     level: 'basic',
@@ -226,9 +246,20 @@ const CourseManagement: React.FC<CourseManagementProps> = ({ initialCourses, ini
   };
 
   const resetForm = () => {
-    setFormData({
-      title: '', categoryId: '', level: 'basic', description: '', coverImage: '', thumbnail: '', status: 'draft', sections: []
-    });
+    const initialCourseState: Partial<Course> = {
+      title: '',
+      categoryId: '',
+      level: 'basic',
+      description: '',
+      coverImage: '',
+      thumbnail: '',
+      status: 'draft',
+      sections: [],
+      enrolledUserIds: [],
+      enrolledDivisionIds: []
+    };
+    setFormData(initialCourseState);
+    setInitialFormData(initialCourseState);
     setTempLesson({ title: '', contentType: 'youtube', sourceType: 'embed', url: '', textContent: '', duration: '', watermark: true, forceComplete: true, attachmentName: '', attachmentUrl: '' });
     setCurrentStep(1);
     setIsEditing(false);
@@ -242,6 +273,7 @@ const CourseManagement: React.FC<CourseManagementProps> = ({ initialCourses, ini
 
   const handleOpenEdit = (course: Course) => {
     setFormData(course);
+    setInitialFormData(course);
     setEditId(course.id);
     setIsEditing(true);
     setCurrentStep(1);
@@ -266,6 +298,58 @@ const CourseManagement: React.FC<CourseManagementProps> = ({ initialCourses, ini
       success: 'Kursus berhasil dihapus!',
       error: (err) => `Gagal: ${err.message}`,
     }).then(() => router.refresh()).catch(error => console.error('Delete error:', error));
+  };
+
+  const handleSaveAndContinue = async () => {
+    if (!formData.title || !formData.categoryId) {
+      return toast.error('Judul dan Kategori wajib diisi');
+    }
+    
+    setIsLoading(true);
+    toast.loading('Menyimpan perubahan...');
+    
+    const url = isEditing ? `/api/admin/courses/${editId}` : '/api/admin/courses';
+    const method = isEditing ? 'PATCH' : 'POST';
+
+    try {
+      // The API is expected to handle the partial data and save it.
+      const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(formData) });
+      const result = await res.json();
+
+      if (!res.ok) {
+        throw new Error(result.error || 'Gagal menyimpan progres.');
+      }
+      
+      const courseId = isEditing ? editId : result.data.id;
+      if (!courseId) {
+        throw new Error("Tidak menerima ID kursus dari server.");
+      }
+
+      if (!isEditing) {
+          setEditId(courseId);
+          setIsEditing(true);
+      }
+      
+      // Re-fetch the definitive state from the server to ensure consistency
+      const refetchRes = await fetch(`/api/admin/courses/${courseId}`);
+      const updatedCourseResult = await refetchRes.json();
+
+      if (updatedCourseResult.success) {
+          setFormData(updatedCourseResult.data);
+          setInitialFormData(updatedCourseResult.data);
+          toast.dismiss();
+          toast.success('Perubahan berhasil disimpan!');
+          router.refresh();
+          setCurrentStep(prev => prev + 1);
+      } else {
+        throw new Error('Gagal mengambil data terbaru setelah menyimpan.');
+      }
+    } catch (error: any) {
+      toast.dismiss();
+      toast.error(`Gagal: ${error.message}`);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleSaveCourse = async () => {
@@ -343,6 +427,8 @@ const CourseManagement: React.FC<CourseManagementProps> = ({ initialCourses, ini
     setTempLesson(prev => ({...prev, textContent: content}));
   }, [setTempLesson]);
 
+  const isDirty = JSON.stringify(formData) !== JSON.stringify(initialFormData);
+
   return (
     <div className="min-h-screen bg-[#F8F9FA]">
       <div className="bg-white border-b border-gray-200 px-8 py-6 flex items-center justify-between">
@@ -383,9 +469,9 @@ const CourseManagement: React.FC<CourseManagementProps> = ({ initialCourses, ini
             <div className="flex justify-center py-4 bg-gray-50 border-b"><div className="flex space-x-4">
               <button onClick={() => setCurrentStep(1)} disabled={isLoading} className={`px-4 py-2 rounded-full flex items-center space-x-2 ${currentStep === 1 ? 'bg-[#FFF8E7] text-[#C5A059] border border-[#C5A059]' : 'text-gray-400'}`}><span className="w-6 h-6 rounded-full bg-current text-white flex items-center justify-center text-xs">1</span><span className="font-semibold text-sm">Informasi Dasar</span></button>
               <div className="w-8 h-px bg-gray-300 self-center"></div>
-              <button onClick={() => setCurrentStep(2)} disabled={isLoading} className={`px-4 py-2 rounded-full flex items-center space-x-2 ${currentStep === 2 ? 'bg-[#FFF8E7] text-[#C5A059] border border-[#C5A059]' : 'text-gray-400'}`}><span className="w-6 h-6 rounded-full bg-current text-white flex items-center justify-center text-xs">2</span><span className="font-semibold text-sm">Kurikulum</span></button>
+              <button onClick={() => isDirty ? handleSaveAndContinue() : setCurrentStep(2)} disabled={!isEditing && !formData.title} className={`px-4 py-2 rounded-full flex items-center space-x-2 ${currentStep === 2 ? 'bg-[#FFF8E7] text-[#C5A059] border border-[#C5A059]' : 'text-gray-400'}`}><span className="w-6 h-6 rounded-full bg-current text-white flex items-center justify-center text-xs">2</span><span className="font-semibold text-sm">Kurikulum</span></button>
               <div className="w-8 h-px bg-gray-300 self-center"></div>
-              <button onClick={() => setCurrentStep(3)} disabled={isLoading} className={`px-4 py-2 rounded-full flex items-center space-x-2 ${currentStep === 3 ? 'bg-[#FFF8E7] text-[#C5A059] border border-[#C5A059]' : 'text-gray-400'}`}><span className="w-6 h-6 rounded-full bg-current text-white flex items-center justify-center text-xs">3</span><span className="font-semibold text-sm">Enrollment</span></button>
+              <button onClick={() => isDirty ? handleSaveAndContinue() : setCurrentStep(3)} disabled={!isEditing && !formData.title} className={`px-4 py-2 rounded-full flex items-center space-x-2 ${currentStep === 3 ? 'bg-[#FFF8E7] text-[#C5A059] border border-[#C5A059]' : 'text-gray-400'}`}><span className="w-6 h-6 rounded-full bg-current text-white flex items-center justify-center text-xs">3</span><span className="font-semibold text-sm">Enrollment</span></button>
             </div></div>
             <div className="flex-1 overflow-y-auto p-8">
               {currentStep === 1 ? (
@@ -564,10 +650,21 @@ const CourseManagement: React.FC<CourseManagementProps> = ({ initialCourses, ini
             </div>
             <div className="p-6 border-t flex justify-end space-x-3 bg-white rounded-b-xl">
               {currentStep > 1 && <button onClick={() => setCurrentStep(prev => prev - 1)} disabled={isLoading} className="px-6 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-semibold">Kembali</button>}
+              
               {currentStep < 3 ? (
-                <button onClick={() => setCurrentStep(prev => prev + 1)} disabled={isLoading} className="px-6 py-2.5 bg-[#C5A059] text-black rounded-lg hover:bg-[#B08F4A] font-bold">Lanjut</button>
+                isDirty ? (
+                  <button onClick={handleSaveAndContinue} disabled={isLoading} className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold flex items-center shadow-md">
+                    {isLoading ? <Loader2 size={18} className="mr-2 animate-spin" /> : <Save size={18} className="mr-2" />}
+                    {isLoading ? 'Menyimpan...' : 'Simpan & Lanjut'}
+                  </button>
+                ) : (
+                  <button onClick={() => setCurrentStep(prev => prev + 1)} disabled={isLoading} className="px-6 py-2.5 bg-[#C5A059] text-black rounded-lg hover:bg-[#B08F4A] font-bold">Lanjut</button>
+                )
               ) : (
-                <button onClick={handleSaveCourse} disabled={isLoading} className="px-6 py-2.5 bg-[#C5A059] text-black rounded-lg hover:bg-[#B08F4A] font-bold flex items-center disabled:opacity-50 disabled:cursor-not-allowed">{isLoading ? <Loader2 size={18} className="mr-2 animate-spin" /> : <Save size={18} className="mr-2" />} {isLoading ? 'Menyimpan...' : 'Simpan Kursus'}</button>
+                <button onClick={handleSaveCourse} disabled={isLoading || (!isDirty && isEditing)} className="px-6 py-2.5 bg-[#C5A059] text-black rounded-lg hover:bg-[#B08F4A] font-bold flex items-center disabled:opacity-50 disabled:cursor-not-allowed">
+                  {isLoading ? <Loader2 size={18} className="mr-2 animate-spin" /> : <Save size={18} className="mr-2" />} 
+                  {isLoading ? 'Menyimpan...' : 'Simpan Kursus'}
+                </button>
               )}
             </div>
           </div>
