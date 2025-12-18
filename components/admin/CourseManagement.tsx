@@ -346,33 +346,45 @@ const CourseManagement: React.FC<CourseManagementProps> = ({ initialCourses, ini
   const handleDelete = async (id: string, title: string) => {
     const confirmMessage = `Hapus kursus "${title}"? Tindakan ini tidak dapat dibatalkan.`;
     
-    const performDelete = () => {
-      const promise = fetch(`/api/admin/courses/${id}`, { method: 'DELETE' })
-        .then(async res => {
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.error || 'Gagal menghapus kursus');
-          return data;
-        });
-      toast.promise(promise, {
-        loading: 'Menghapus kursus...',
-        success: (data) => (
+    const performDelete = async () => {
+      toast.loading('Menghapus kursus...');
+      try {
+        const res = await fetch(`/api/admin/courses/${id}`, { method: 'DELETE' });
+        const data = await res.json();
+
+        toast.dismiss();
+        if (res.ok) {
+          toast.success((t) => (
+            <div className="flex items-center justify-between w-full">
+              <span>Kursus berhasil dihapus!</span>
+              <button onClick={() => toast.dismiss(t.id)} className="p-1 rounded-full hover:bg-gray-100">
+                <X size={16} />
+              </button>
+            </div>
+          ), { duration: 3000 });
+          router.refresh();
+        } else {
+          toast.error((t) => (
+            <div className="flex items-center justify-between w-full">
+              <span>{`Gagal: ${data.error || 'Terjadi kesalahan'}`}</span>
+              <button onClick={() => toast.dismiss(t.id)} className="p-1 rounded-full hover:bg-gray-100">
+                <X size={16} />
+              </button>
+            </div>
+          ), { duration: 3000 });
+        }
+      } catch (error: any) {
+        console.error('Delete error:', error);
+        toast.dismiss();
+        toast.error((t) => (
           <div className="flex items-center justify-between w-full">
-            <span>Kursus berhasil dihapus!</span>
-            <button onClick={(t) => toast.dismiss(t.id)} className="p-1 rounded-full hover:bg-gray-100">
+            <span>{`Terjadi kesalahan sistem: ${error.message}`}</span>
+            <button onClick={() => toast.dismiss(t.id)} className="p-1 rounded-full hover:bg-gray-100">
               <X size={16} />
             </button>
           </div>
-        ),
-        error: (err) => (
-          <div className="flex items-center justify-between w-full">
-            <span>{`Gagal: ${err.message}`}</span>
-            <button onClick={(t) => toast.dismiss(t.id)} className="p-1 rounded-full hover:bg-gray-100">
-              <X size={16} />
-            </button>
-          </div>
-        ),
-      }, { success: { duration: 3000 }, error: { duration: 3000 } })
-      .then(() => router.refresh()).catch(error => console.error('Delete error:', error));
+        ), { duration: 3000 });
+      }
     };
 
     showConfirmationToast(confirmMessage, performDelete);
