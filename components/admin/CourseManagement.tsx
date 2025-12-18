@@ -167,23 +167,51 @@ const CourseManagement: React.FC<CourseManagementProps> = ({ initialCourses, ini
         if (usersData.success) {
           setAllUsers(usersData.data);
         } else {
-          toast.error('Gagal memuat data pengguna.');
+          toast.error((t) => (
+            <div className="flex items-center justify-between w-full">
+              <span>Gagal memuat data pengguna.</span>
+              <button onClick={() => toast.dismiss(t.id)} className="p-1 rounded-full hover:bg-gray-100">
+                <X size={16} />
+              </button>
+            </div>
+          ), { duration: 3000 });
         }
 
         if (divisionsData.success) {
           setAllDivisions(divisionsData.data);
         } else {
-          toast.error('Gagal memuat data divisi.');
+          toast.error((t) => (
+            <div className="flex items-center justify-between w-full">
+              <span>Gagal memuat data divisi.</span>
+              <button onClick={() => toast.dismiss(t.id)} className="p-1 rounded-full hover:bg-gray-100">
+                <X size={16} />
+              </button>
+            </div>
+          ), { duration: 3000 });
         }
         
         if (categoriesData.success) {
           setCategories(categoriesData.data);
         } else {
-          toast.error('Gagal memuat data kategori.');
+          toast.error((t) => (
+            <div className="flex items-center justify-between w-full">
+              <span>Gagal memuat data kategori.</span>
+              <button onClick={() => toast.dismiss(t.id)} className="p-1 rounded-full hover:bg-gray-100">
+                <X size={16} />
+              </button>
+            </div>
+          ), { duration: 3000 });
         }
       } catch (error) {
         console.error('Error fetching required data:', error);
-        toast.error('Terjadi kesalahan saat memuat data esensial.');
+        toast.error((t) => (
+          <div className="flex items-center justify-between w-full">
+            <span>Terjadi kesalahan saat memuat data esensial.</span>
+            <button onClick={() => toast.dismiss(t.id)} className="p-1 rounded-full hover:bg-gray-100">
+              <X size={16} />
+            </button>
+          </div>
+        ), { duration: 3000 });
       }
     };
 
@@ -266,6 +294,36 @@ const CourseManagement: React.FC<CourseManagementProps> = ({ initialCourses, ini
     setEditId(null);
   };
 
+  const showConfirmationToast = (message: string, onConfirm: () => void) => {
+    toast(
+      (t) => (
+        <div className="flex flex-col items-start gap-3 p-2">
+          <p className="font-semibold text-gray-800">{message}</p>
+          <div className="w-full flex gap-2">
+            <button
+              className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-semibold text-sm"
+              onClick={() => toast.dismiss(t.id)}
+            >
+              Batal
+            </button>
+            <button
+              className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 font-semibold flex justify-center items-center text-sm"
+              onClick={() => {
+                toast.dismiss(t.id);
+                onConfirm();
+              }}
+            >
+              Hapus
+            </button>
+          </div>
+        </div>
+      ),
+      {
+        duration: 10000,
+      }
+    );
+  };
+  
   const handleOpenAdd = () => {
     resetForm();
     setShowModal(true);
@@ -286,23 +344,50 @@ const CourseManagement: React.FC<CourseManagementProps> = ({ initialCourses, ini
   };
 
   const handleDelete = async (id: string, title: string) => {
-    if (!confirm(`Hapus kursus "${title}"?`)) return;
-    const promise = fetch(`/api/admin/courses/${id}`, { method: 'DELETE' })
-      .then(async res => {
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Gagal menghapus kursus');
-        return data;
-      });
-    toast.promise(promise, {
-      loading: 'Menghapus kursus...',
-      success: 'Kursus berhasil dihapus!',
-      error: (err) => `Gagal: ${err.message}`,
-    }).then(() => router.refresh()).catch(error => console.error('Delete error:', error));
+    const confirmMessage = `Hapus kursus "${title}"? Tindakan ini tidak dapat dibatalkan.`;
+    
+    const performDelete = () => {
+      const promise = fetch(`/api/admin/courses/${id}`, { method: 'DELETE' })
+        .then(async res => {
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Gagal menghapus kursus');
+          return data;
+        });
+      toast.promise(promise, {
+        loading: 'Menghapus kursus...',
+        success: (data) => (
+          <div className="flex items-center justify-between w-full">
+            <span>Kursus berhasil dihapus!</span>
+            <button onClick={(t) => toast.dismiss(t.id)} className="p-1 rounded-full hover:bg-gray-100">
+              <X size={16} />
+            </button>
+          </div>
+        ),
+        error: (err) => (
+          <div className="flex items-center justify-between w-full">
+            <span>{`Gagal: ${err.message}`}</span>
+            <button onClick={(t) => toast.dismiss(t.id)} className="p-1 rounded-full hover:bg-gray-100">
+              <X size={16} />
+            </button>
+          </div>
+        ),
+      }, { success: { duration: 3000 }, error: { duration: 3000 } })
+      .then(() => router.refresh()).catch(error => console.error('Delete error:', error));
+    };
+
+    showConfirmationToast(confirmMessage, performDelete);
   };
 
   const handleSaveAndContinue = async () => {
     if (!formData.title || !formData.categoryId) {
-      return toast.error('Judul dan Kategori wajib diisi');
+      return toast.error((t) => (
+        <div className="flex items-center justify-between w-full">
+          <span>Judul dan Kategori wajib diisi</span>
+          <button onClick={() => toast.dismiss(t.id)} className="p-1 rounded-full hover:bg-gray-100">
+            <X size={16} />
+          </button>
+        </div>
+      ), { duration: 3000 });
     }
     
     setIsLoading(true);
@@ -338,7 +423,14 @@ const CourseManagement: React.FC<CourseManagementProps> = ({ initialCourses, ini
           setFormData(updatedCourseResult.data);
           setInitialFormData(updatedCourseResult.data);
           toast.dismiss();
-          toast.success('Perubahan berhasil disimpan!');
+          toast.success((t) => (
+            <div className="flex items-center justify-between w-full">
+              <span>Perubahan berhasil disimpan!</span>
+              <button onClick={() => toast.dismiss(t.id)} className="p-1 rounded-full hover:bg-gray-100">
+                <X size={16} />
+              </button>
+            </div>
+          ), { duration: 3000 });
           router.refresh();
           setCurrentStep(prev => prev + 1);
       } else {
@@ -346,7 +438,14 @@ const CourseManagement: React.FC<CourseManagementProps> = ({ initialCourses, ini
       }
     } catch (error: any) {
       toast.dismiss();
-      toast.error(`Gagal: ${error.message}`);
+      toast.error((t) => (
+        <div className="flex items-center justify-between w-full">
+          <span>{`Gagal: ${error.message}`}</span>
+          <button onClick={() => toast.dismiss(t.id)} className="p-1 rounded-full hover:bg-gray-100">
+            <X size={16} />
+          </button>
+        </div>
+      ), { duration: 3000 });
     } finally {
       setIsLoading(false);
     }
@@ -355,7 +454,14 @@ const CourseManagement: React.FC<CourseManagementProps> = ({ initialCourses, ini
   const handleSaveCourse = async () => {
     setIsLoading(true);
     if (!formData.title || !formData.categoryId) {
-      toast.error('Judul dan Kategori wajib diisi');
+      toast.error((t) => (
+        <div className="flex items-center justify-between w-full">
+          <span>Judul dan Kategori wajib diisi</span>
+          <button onClick={() => toast.dismiss(t.id)} className="p-1 rounded-full hover:bg-gray-100">
+            <X size={16} />
+          </button>
+        </div>
+      ), { duration: 3000 });
       setIsLoading(false);
       return;
     }
@@ -377,16 +483,37 @@ const CourseManagement: React.FC<CourseManagementProps> = ({ initialCourses, ini
       const result = await res.json();
       toast.dismiss();
       if (result.success) {
-        toast.success(`Kursus berhasil ${isEditing ? 'diperbarui' : 'dibuat'}!`);
+        toast.success((t) => (
+          <div className="flex items-center justify-between w-full">
+            <span>{`Kursus berhasil ${isEditing ? 'diperbarui' : 'dibuat'}!`}</span>
+            <button onClick={() => toast.dismiss(t.id)} className="p-1 rounded-full hover:bg-gray-100">
+              <X size={16} />
+            </button>
+          </div>
+        ), { duration: 3000 });
         setShowModal(false);
         router.refresh();
       } else {
-        toast.error(`Gagal: ${result.error}`);
+        toast.error((t) => (
+          <div className="flex items-center justify-between w-full">
+            <span>{`Gagal: ${result.error}`}</span>
+            <button onClick={() => toast.dismiss(t.id)} className="p-1 rounded-full hover:bg-gray-100">
+              <X size={16} />
+            </button>
+          </div>
+        ), { duration: 3000 });
       }
     } catch (error) {
       console.error('Save error:', error);
       toast.dismiss();
-      toast.error('Terjadi kesalahan sistem');
+      toast.error((t) => (
+        <div className="flex items-center justify-between w-full">
+          <span>Terjadi kesalahan sistem</span>
+          <button onClick={() => toast.dismiss(t.id)} className="p-1 rounded-full hover:bg-gray-100">
+            <X size={16} />
+          </button>
+        </div>
+      ), { duration: 3000 });
     } finally {
       setIsLoading(false);
     }
@@ -399,16 +526,49 @@ const CourseManagement: React.FC<CourseManagementProps> = ({ initialCourses, ini
   const handleCancelEditLesson = () => { setActiveSectionId(null); setEditingLessonId(null); setTempLesson({ title: '', contentType: 'youtube', url: '', textContent: '', duration: '', attachmentName: '', attachmentUrl: '' }); };
 
   const handleDeleteLesson = (lessonId: string, sectionId: string) => {
-    if (!confirm('Anda yakin ingin menghapus materi ini?')) return;
-    const newSections = (formData.sections || []).map(s => s.id === sectionId ? { ...s, lessons: s.lessons.filter(l => l.id !== lessonId) } : s);
-    setFormData(prev => ({ ...prev, sections: newSections }));
-    toast.success('Materi dihapus dari daftar.');
+    const confirmMessage = 'Anda yakin ingin menghapus materi ini dari daftar?';
+    
+    const performDelete = () => {
+      const newSections = (formData.sections || []).map(s => s.id === sectionId ? { ...s, lessons: s.lessons.filter(l => l.id !== lessonId) } : s);
+      setFormData(prev => ({ ...prev, sections: newSections }));
+      toast.success((t) => (
+        <div className="flex items-center justify-between w-full">
+          <span>Materi dihapus dari daftar.</span>
+          <button onClick={() => toast.dismiss(t.id)} className="p-1 rounded-full hover:bg-gray-100">
+            <X size={16} />
+          </button>
+        </div>
+      ), { duration: 3000 });
+    };
+
+    showConfirmationToast(confirmMessage, performDelete);
   };
 
   const handleSaveLesson = (sectionId: string) => {
-    if (!tempLesson.title) return toast.error('Judul materi wajib diisi');
-    if (tempLesson.contentType === 'youtube' && !tempLesson.url) return toast.error('URL materi wajib diisi');
-    if (tempLesson.contentType === 'text' && !tempLesson.textContent) return toast.error('Konten artikel wajib diisi');
+    if (!tempLesson.title) return toast.error((t) => (
+      <div className="flex items-center justify-between w-full">
+        <span>Judul materi wajib diisi</span>
+        <button onClick={() => toast.dismiss(t.id)} className="p-1 rounded-full hover:bg-gray-100">
+          <X size={16} />
+        </button>
+      </div>
+    ), { duration: 3000 });
+    if (tempLesson.contentType === 'youtube' && !tempLesson.url) return toast.error((t) => (
+      <div className="flex items-center justify-between w-full">
+        <span>URL materi wajib diisi</span>
+        <button onClick={() => toast.dismiss(t.id)} className="p-1 rounded-full hover:bg-gray-100">
+          <X size={16} />
+        </button>
+      </div>
+    ), { duration: 3000 });
+    if (tempLesson.contentType === 'text' && !tempLesson.textContent) return toast.error((t) => (
+      <div className="flex items-center justify-between w-full">
+        <span>Konten artikel wajib diisi</span>
+        <button onClick={() => toast.dismiss(t.id)} className="p-1 rounded-full hover:bg-gray-100">
+          <X size={16} />
+        </button>
+      </div>
+    ), { duration: 3000 });
 
     const lessonData = { ...tempLesson, id: editingLessonId || Date.now().toString() } as Lesson;
     const newSections = (formData.sections || []).map(s => {
@@ -420,7 +580,14 @@ const CourseManagement: React.FC<CourseManagementProps> = ({ initialCourses, ini
     });
     setFormData(prev => ({ ...prev, sections: newSections }));
     handleCancelEditLesson();
-    toast.success('Materi berhasil disimpan sementara!');
+    toast.success((t) => (
+      <div className="flex items-center justify-between w-full">
+        <span>Materi berhasil disimpan sementara!</span>
+        <button onClick={() => toast.dismiss(t.id)} className="p-1 rounded-full hover:bg-gray-100">
+          <X size={16} />
+        </button>
+      </div>
+    ), { duration: 3000 });
   };
 
   const handleRichTextChange = useCallback((content: string) => {

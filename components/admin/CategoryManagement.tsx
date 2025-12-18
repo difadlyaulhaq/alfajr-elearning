@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, Search, Edit, Trash2, Loader, X, FolderOpen, AlertCircle, ChevronDown } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 interface Category {
   id: string;
@@ -226,9 +227,40 @@ const CategoryManagement = () => {
     setIsModalOpen(true);
   };
 
+  const showConfirmationToast = (message: string, onConfirm: () => void) => {
+    toast(
+      (t) => (
+        <div className="flex flex-col items-start gap-3 p-2">
+          <p className="font-semibold text-gray-800">{message}</p>
+          <div className="w-full flex gap-2">
+            <button
+              className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-semibold text-sm"
+              onClick={() => toast.dismiss(t.id)}
+            >
+              Batal
+            </button>
+            <button
+              className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 font-semibold flex justify-center items-center text-sm"
+              onClick={() => {
+                toast.dismiss(t.id);
+                onConfirm();
+              }}
+            >
+              Hapus
+            </button>
+          </div>
+        </div>
+      ),
+      {
+        duration: 10000, // User has 10 seconds to decide
+      }
+    );
+  };
+  
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    toast.loading(editingId ? 'Menyimpan perubahan...' : 'Menambahkan kategori...');
 
     try {
       let response;
@@ -248,46 +280,97 @@ const CategoryManagement = () => {
       }
 
       const result = await response.json();
+      toast.dismiss();
 
       if (response.ok) {
+        toast.success((t) => (
+          <div className="flex items-center justify-between w-full">
+            <span>{result.message}</span>
+            <button onClick={() => toast.dismiss(t.id)} className="p-1 rounded-full hover:bg-gray-100">
+              <X size={16} />
+            </button>
+          </div>
+        ), { duration: 3000 });
         setIsModalOpen(false);
         setFormData(initialFormState);
         setEditingId(null);
         fetchCategories();
         router.refresh();
-        alert(result.message);
       } else {
-        alert(`Gagal: ${result.error}`);
+        toast.error((t) => (
+          <div className="flex items-center justify-between w-full">
+            <span>{`Gagal: ${result.error}`}</span>
+            <button onClick={() => toast.dismiss(t.id)} className="p-1 rounded-full hover:bg-gray-100">
+              <X size={16} />
+            </button>
+          </div>
+        ), { duration: 3000 });
       }
     } catch (error) {
       console.error('Error:', error);
-      alert('Terjadi kesalahan sistem.');
+      toast.dismiss();
+      toast.error((t) => (
+        <div className="flex items-center justify-between w-full">
+          <span>Terjadi kesalahan sistem.</span>
+          <button onClick={() => toast.dismiss(t.id)} className="p-1 rounded-full hover:bg-gray-100">
+            <X size={16} />
+          </button>
+        </div>
+      ), { duration: 3000 });
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`Hapus kategori "${name}"? Data ini tidak bisa dikembalikan.`)) return;
+    const confirmMessage = `Hapus kategori "${name}"? Data ini tidak bisa dikembalikan.`;
+    
+    const performDelete = async () => {
+      toast.loading('Menghapus kategori...');
+      try {
+        const response = await fetch(`/api/admin/categories/${id}`, {
+          method: 'DELETE',
+        });
 
-    try {
-      const response = await fetch(`/api/admin/categories/${id}`, {
-        method: 'DELETE',
-      });
+        const result = await response.json();
+        toast.dismiss();
 
-      const result = await response.json();
-
-      if (response.ok) {
-        fetchCategories();
-        router.refresh();
-        alert(result.message);
-      } else {
-        alert(`Gagal menghapus: ${result.error}`);
+        if (response.ok) {
+          toast.success((t) => (
+            <div className="flex items-center justify-between w-full">
+              <span>{result.message}</span>
+              <button onClick={() => toast.dismiss(t.id)} className="p-1 rounded-full hover:bg-gray-100">
+                <X size={16} />
+              </button>
+            </div>
+          ), { duration: 3000 });
+          fetchCategories();
+          router.refresh();
+        } else {
+          toast.error((t) => (
+            <div className="flex items-center justify-between w-full">
+              <span>{`Gagal menghapus: ${result.error}`}</span>
+              <button onClick={() => toast.dismiss(t.id)} className="p-1 rounded-full hover:bg-gray-100">
+                <X size={16} />
+              </button>
+            </div>
+          ), { duration: 3000 });
+        }
+      } catch (error) {
+        console.error('Error deleting category:', error);
+        toast.dismiss();
+        toast.error((t) => (
+          <div className="flex items-center justify-between w-full">
+            <span>Terjadi kesalahan saat menghapus kategori.</span>
+            <button onClick={() => toast.dismiss(t.id)} className="p-1 rounded-full hover:bg-gray-100">
+              <X size={16} />
+            </button>
+          </div>
+        ), { duration: 3000 });
       }
-    } catch (error) {
-      console.error('Error deleting category:', error);
-      alert('Terjadi kesalahan saat menghapus kategori.');
-    }
+    };
+
+    showConfirmationToast(confirmMessage, performDelete);
   };
 
   const filteredCategories = categories.filter(cat =>

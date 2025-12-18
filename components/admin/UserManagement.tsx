@@ -1,6 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import { Plus, Search, Edit, Trash2, UserX, UserCheck, Mail, Building, Loader, X, Eye } from 'lucide-react';
+import toast from 'react-hot-toast';
 import Button from '@/components/shared/Button';
 
 // Definisikan tipe data User
@@ -239,9 +240,40 @@ const UserManagement = () => {
     setIsModalOpen(true);
   };
 
+  const showConfirmationToast = (message: string, onConfirm: () => void, confirmButtonColor: string = 'bg-red-600 hover:bg-red-700') => {
+    toast(
+      (t) => (
+        <div className="flex flex-col items-start gap-3 p-2">
+          <p className="font-semibold text-gray-800">{message}</p>
+          <div className="w-full flex gap-2">
+            <button
+              className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-semibold text-sm"
+              onClick={() => toast.dismiss(t.id)}
+            >
+              Batal
+            </button>
+            <button
+              className={`flex-1 px-4 py-2.5 text-white rounded-lg font-semibold flex justify-center items-center text-sm ${confirmButtonColor}`}
+              onClick={() => {
+                toast.dismiss(t.id);
+                onConfirm();
+              }}
+            >
+              Konfirmasi
+            </button>
+          </div>
+        </div>
+      ),
+      {
+        duration: 10000, // User has 10 seconds to decide
+      }
+    );
+  };
+  
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    toast.loading(editingId ? 'Memperbarui data...' : 'Menambahkan pegawai...');
 
     try {
       let response;
@@ -261,20 +293,43 @@ const UserManagement = () => {
           body: JSON.stringify(formData),
         });
       }
-
+      
+      toast.dismiss();
       if (response.ok) {
         setIsModalOpen(false);
         setFormData(initialFormState);
         setEditingId(null);
         fetchUsers(); // Refresh data tabel
-        // alert(`Pegawai berhasil ${editingId ? 'diperbarui' : 'ditambahkan'}!`);
+        toast.success((t) => (
+          <div className="flex items-center justify-between w-full">
+            <span>{`Pegawai berhasil ${editingId ? 'diperbarui' : 'ditambahkan'}!`}</span>
+            <button onClick={() => toast.dismiss(t.id)} className="p-1 rounded-full hover:bg-gray-100">
+              <X size={16} />
+            </button>
+          </div>
+        ), { duration: 3000 });
       } else {
         const errorData = await response.json();
-        alert(`Gagal: ${errorData.error}`);
+        toast.error((t) => (
+          <div className="flex items-center justify-between w-full">
+            <span>{`Gagal: ${errorData.error}`}</span>
+            <button onClick={() => toast.dismiss(t.id)} className="p-1 rounded-full hover:bg-gray-100">
+              <X size={16} />
+            </button>
+          </div>
+        ), { duration: 3000 });
       }
     } catch (error) {
       console.error('Error:', error);
-      alert('Terjadi kesalahan sistem.');
+      toast.dismiss();
+      toast.error((t) => (
+        <div className="flex items-center justify-between w-full">
+          <span>Terjadi kesalahan sistem.</span>
+          <button onClick={() => toast.dismiss(t.id)} className="p-1 rounded-full hover:bg-gray-100">
+            <X size={16} />
+          </button>
+        </div>
+      ), { duration: 3000 });
     } finally {
       setIsSubmitting(false);
     }
@@ -284,48 +339,104 @@ const UserManagement = () => {
   const handleToggleStatus = async (userId: string, currentStatus: string) => {
     const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
     const confirmMessage = newStatus === 'inactive' 
-      ? 'Apakah Anda yakin ingin menonaktifkan pegawai ini? Mereka tidak akan bisa login lagi.' 
+      ? 'Nonaktifkan pegawai ini? Mereka tidak akan bisa login lagi.' 
       : 'Aktifkan kembali pegawai ini?';
 
-    if (!confirm(confirmMessage)) return;
-
-    try {
-      const response = await fetch(`/api/admin/users/${userId}/status`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus }),
-      });
-
-      if (response.ok) {
-        fetchUsers();
-      } else {
-        alert('Gagal mengubah status.');
+    const performToggle = async () => {
+      toast.loading('Mengubah status...');
+      try {
+        const response = await fetch(`/api/admin/users/${userId}/status`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: newStatus }),
+        });
+        
+        toast.dismiss();
+        if (response.ok) {
+          fetchUsers();
+          toast.success((t) => (
+            <div className="flex items-center justify-between w-full">
+              <span>Status berhasil diubah!</span>
+              <button onClick={() => toast.dismiss(t.id)} className="p-1 rounded-full hover:bg-gray-100">
+                <X size={16} />
+              </button>
+            </div>
+          ), { duration: 3000 });
+        } else {
+          toast.error((t) => (
+            <div className="flex items-center justify-between w-full">
+              <span>Gagal mengubah status.</span>
+              <button onClick={() => toast.dismiss(t.id)} className="p-1 rounded-full hover:bg-gray-100">
+                <X size={16} />
+              </button>
+            </div>
+          ), { duration: 3000 });
+        }
+      } catch (error) {
+        console.error('Error toggling status:', error);
+        toast.dismiss();
+        toast.error((t) => (
+          <div className="flex items-center justify-between w-full">
+            <span>Gagal mengubah status.</span>
+            <button onClick={() => toast.dismiss(t.id)} className="p-1 rounded-full hover:bg-gray-100">
+              <X size={16} />
+            </button>
+          </div>
+        ), { duration: 3000 });
       }
-    } catch (error) {
-      console.error('Error toggling status:', error);
-    }
+    };
+
+    showConfirmationToast(confirmMessage, performToggle, newStatus === 'inactive' ? 'bg-orange-500 hover:bg-orange-600' : 'bg-green-600 hover:bg-green-700');
   };
 
   // Fungsi Delete User
   const handleDeleteUser = async (userId: string, userName: string) => {
-    if (!confirm(`Apakah Anda yakin ingin menghapus user "${userName}"? Aksi ini tidak dapat dibatalkan.`)) return;
+    const confirmMessage = `Hapus permanen user "${userName}"? Aksi ini tidak dapat dibatalkan.`;
 
-    try {
-      const response = await fetch(`/api/admin/users/${userId}`, {
-        method: 'DELETE',
-      });
+    const performDelete = async () => {
+      toast.loading('Menghapus user...');
+      try {
+        const response = await fetch(`/api/admin/users/${userId}`, {
+          method: 'DELETE',
+        });
 
-      if (response.ok) {
-        fetchUsers();
-        alert('User berhasil dihapus!');
-      } else {
-        const errorData = await response.json();
-        alert(`Gagal menghapus user: ${errorData.error}`);
+        toast.dismiss();
+        if (response.ok) {
+          fetchUsers();
+          toast.success((t) => (
+            <div className="flex items-center justify-between w-full">
+              <span>User berhasil dihapus!</span>
+              <button onClick={() => toast.dismiss(t.id)} className="p-1 rounded-full hover:bg-gray-100">
+                <X size={16} />
+              </button>
+            </div>
+          ), { duration: 3000 });
+        } else {
+          const errorData = await response.json();
+          toast.error((t) => (
+            <div className="flex items-center justify-between w-full">
+              <span>{`Gagal menghapus user: ${errorData.error}`}</span>
+              <button onClick={() => toast.dismiss(t.id)} className="p-1 rounded-full hover:bg-gray-100">
+                <X size={16} />
+              </button>
+            </div>
+          ), { duration: 3000 });
+        }
+      } catch (error) {
+        console.error('Error deleting user:', error);
+        toast.dismiss();
+        toast.error((t) => (
+          <div className="flex items-center justify-between w-full">
+            <span>Terjadi kesalahan sistem saat menghapus user.</span>
+            <button onClick={() => toast.dismiss(t.id)} className="p-1 rounded-full hover:bg-gray-100">
+              <X size={16} />
+            </button>
+          </div>
+        ), { duration: 3000 });
       }
-    } catch (error) {
-      console.error('Error deleting user:', error);
-      alert('Terjadi kesalahan sistem saat menghapus user.');
-    }
+    };
+
+    showConfirmationToast(confirmMessage, performDelete);
   };
 
   // Filter Logic
