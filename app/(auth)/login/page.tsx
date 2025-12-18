@@ -110,7 +110,9 @@ const LoginPage = () => {
 
         <div className="relative w-full max-w-md mx-auto">
           <div className="text-center mb-6 sm:mb-7">
-              <img src="/logo-alfajr.png" alt="Alfajr Umroh Logo" className="w-48 h-auto object-contain mx-auto mb-4"/>
+              <div className="bg-white p-4 rounded-xl inline-block shadow-md mb-4">
+                <img src="/logo-alfajr.png" alt="Alfajr Umroh Logo" className="w-40 h-auto object-contain"/>
+              </div>
             <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">Alfajr E-learning</h1>
             <p className="text-gray-400 text-xs sm:text-sm mt-1 sm:mt-2">Silahkan Login Dengan Akun Pegawai Alfajr Anda</p>
           </div>
