@@ -479,14 +479,7 @@ const CourseManagement: React.FC<CourseManagementProps> = ({ initialCourses, ini
     }
     toast.loading('Menyimpan kursus...');
     
-    let videoThumbnail = '';
-    const firstLesson = formData.sections?.[0]?.lessons[0];
-    if (firstLesson && firstLesson.contentType === 'youtube' && firstLesson.url) {
-      const videoId = getYouTubeId(firstLesson.url);
-      if (videoId) videoThumbnail = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
-    }
-
-    const finalFormData = { ...formData, thumbnail: videoThumbnail || formData.coverImage };
+    const finalFormData = { ...formData };
 
     try {
       const url = isEditing ? `/api/admin/courses/${editId}` : '/api/admin/courses';
@@ -660,6 +653,12 @@ const CourseManagement: React.FC<CourseManagementProps> = ({ initialCourses, ini
                     <div><label className="block text-sm font-semibold text-gray-700 mb-2">Level</label><select value={formData.level} onChange={e => setFormData({...formData, level: e.target.value as any})} className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#C5A059] outline-none text-black bg-white" disabled={isLoading}><option value="basic">Basic</option><option value="intermediate">Intermediate</option><option value="advanced">Advanced</option></select></div>
                     <div className="md:col-span-2"><label className="block text-sm font-semibold text-gray-700 mb-2">Deskripsi</label><textarea rows={4} value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#C5A059] outline-none text-black placeholder:text-gray-400" placeholder="Jelaskan tentang kursus ini..." disabled={isLoading} /></div>
                     <div className="md:col-span-2"><label className="block text-sm font-semibold text-gray-700 mb-2">Cover Image (URL)</label><input type="text" value={formData.coverImage} onChange={e => setFormData({...formData, coverImage: e.target.value})} className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#C5A059] outline-none text-black placeholder:text-gray-400" placeholder="https://..." disabled={isLoading}/></div>
+                    { (formData.thumbnail || formData.coverImage) && (
+                        <div className="md:col-span-2">
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">Preview Thumbnail</label>
+                            <img src={formData.thumbnail || formData.coverImage} alt="Preview" className="w-full h-auto rounded-lg border" />
+                        </div>
+                    )}
                     <div className="md:col-span-2"><label className="block text-sm font-semibold text-gray-700 mb-2">Status</label><div className="flex space-x-4"><label className="flex items-center space-x-2 cursor-pointer"><input type="radio" checked={formData.status === 'draft'} onChange={() => setFormData({...formData, status: 'draft'})} className="text-[#C5A059]" disabled={isLoading} /><span className="text-black">Draft</span></label><label className="flex items-center space-x-2 cursor-pointer"><input type="radio" checked={formData.status === 'active'} onChange={() => setFormData({...formData, status: 'active'})} className="text-[#C5A059]" disabled={isLoading} /><span className="text-black">Active</span></label></div></div>
                 </div>
               ) : currentStep === 2 ? (
@@ -694,7 +693,15 @@ const CourseManagement: React.FC<CourseManagementProps> = ({ initialCourses, ini
                                 <option value="text">Artikel Teks</option>
                               </select>
                             </div>
-                            {tempLesson.contentType === 'youtube' && <div className="grid grid-cols-2 gap-3 mb-3"><input type="text" placeholder="Durasi (menit)" className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#C5A059] outline-none text-black placeholder:text-gray-400" value={tempLesson.duration} onChange={e => setTempLesson({...tempLesson, duration: e.target.value})} disabled={isLoading}/><input type="text" placeholder="URL Youtube" className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#C5A059] outline-none text-black placeholder:text-gray-400" value={tempLesson.url} onChange={e => setTempLesson({...tempLesson, url: e.target.value})} disabled={isLoading}/></div>}
+                            {tempLesson.contentType === 'youtube' && <div className="grid grid-cols-2 gap-3 mb-3"><input type="text" placeholder="Durasi (menit)" className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#C5A059] outline-none text-black placeholder:text-gray-400" value={tempLesson.duration} onChange={e => setTempLesson({...tempLesson, duration: e.target.value})} disabled={isLoading}/><input type="text" placeholder="URL Youtube" className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#C5A059] outline-none text-black placeholder:text-gray-400" value={tempLesson.url} onChange={e => setTempLesson({...tempLesson, url: e.target.value})} onBlur={e => {
+                                const videoId = getYouTubeId(e.target.value);
+                                if (videoId) {
+                                    const thumbnailUrl = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+                                    if (!formData.coverImage) {
+                                        setFormData({...formData, thumbnail: thumbnailUrl });
+                                    }
+                                }
+                            }} disabled={isLoading}/></div>}
                             {tempLesson.contentType === 'text' && (
                               <div className="md:col-span-2">
                                 <RichTextEditor
