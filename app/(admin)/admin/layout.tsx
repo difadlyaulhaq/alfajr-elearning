@@ -5,6 +5,7 @@ import { AuthProvider } from '@/context/AuthContext';
 import React from 'react';
 import AdminSidebar from '@/components/admin/Sidebar';
 import dynamic from 'next/dynamic';
+import { Toaster } from 'react-hot-toast';
 
 const ScreenProtection = dynamic(
   () => import('@/components/shared/ScreenProtection').then(mod => mod.ScreenProtection),
@@ -26,6 +27,7 @@ export default function AdminLayout({
         enableDevToolsDetection={true}
         showWarningOnAttempt={true}
       >
+        <Toaster position="top-center" reverseOrder={false} />
         <div className="flex min-h-screen bg-brand-gray">
           <AdminSidebar />
           {/* Main Content */}
