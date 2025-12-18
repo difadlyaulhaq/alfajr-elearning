@@ -1,5 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
+import { Section, Lesson } from '@/types'; // Import Section and Lesson types needed here
+
+function getYouTubeVideoId(url: string): string | null {
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+  const match = url.match(regExp);
+  return (match && match[2].length === 11) ? match[2] : null;
+}
+
+function generateYouTubeThumbnailUrl(videoId: string): string {
+  return `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
+}
 
 // GET: Mengambil satu data kursus
 
@@ -68,112 +79,531 @@ export async function GET(
 
 // PATCH: Memperbarui kursus
 
+
+
+
+
 export async function PATCH(
+
+
+
+
 
   request: NextRequest,
 
+
+
+
+
   { params }: { params: Promise<{ courseId: string }> }
+
+
+
+
+
 ) {
+
+
+
+
+
   try {
+
+
+
+
+
     const { courseId } = await params;
+
+
+
+
 
     const body = await request.json();
 
 
 
+
+
+
+
+
+
+
+
     if (!adminDb) {
+
+
+
+
 
       throw new Error('Firebase Admin belum siap');
 
+
+
+
+
     }
+
+
+
+
+
+
+
+
 
 
 
     const courseRef = adminDb.collection('courses').doc(courseId);
 
+
+
+
+
     const courseDoc = await courseRef.get();
+
+
+
+
+
+
+
+
 
 
 
     if (!courseDoc.exists) {
 
+
+
+
+
       return NextResponse.json(
+
+
+
+
 
         { success: false, error: 'Kursus tidak ditemukan' },
 
+
+
+
+
         { status: 404 }
+
+
+
+
 
       );
 
-    }
 
-    
 
-    // Ambil categoryName berdasarkan categoryId jika berubah
 
-    let categoryName = body.categoryName;
-
-    if (body.categoryId && body.categoryId !== courseDoc.data()?.categoryId) {
-
-        const categoryDoc = await adminDb.collection('categories').doc(body.categoryId).get();
-
-        if (categoryDoc.exists) {
-
-            categoryName = categoryDoc.data()?.name;
-
-        }
 
     }
 
+
+
+
+
     
 
-    // Hitung total video
-
-    const totalVideos = body.sections?.reduce((acc: number, section: any) => acc + (section.lessons?.length || 0), 0) || 0;
 
 
 
-    const updateData = {
 
-      ...body,
+    const existingData = courseDoc.data()!;
 
-      categoryName,
 
-      totalVideos,
+
+
+
+    const updatePayload: { [key: string]: any } = {
+
+
+
+
 
       updatedAt: new Date().toISOString(),
 
+
+
+
+
     };
 
-    
-
-    await courseRef.update(updateData);
 
 
 
-    return NextResponse.json({
 
-      success: true,
 
-      message: 'Kursus berhasil diperbarui'
+
+
+
+
+
+    // Daftar field yang boleh diupdate dari body
+
+
+
+
+
+    const allowedFields = [
+
+
+
+
+
+      'title', 'level', 'description', 'coverImage', 
+
+
+
+
+
+      'status', 'sections', 'enrolledUserIds', 'enrolledDivisionIds'
+
+
+
+
+
+    ];
+
+
+
+
+
+
+
+
+
+
+
+    allowedFields.forEach(field => {
+
+
+
+
+
+      if (body[field] !== undefined) {
+
+
+
+
+
+        updatePayload[field] = body[field];
+
+
+
+
+
+      }
+
+
+
+
 
     });
 
 
 
+
+
+
+
+
+
+
+
+    // Logika khusus untuk perubahan kategori
+
+
+
+
+
+    if (body.categoryId && body.categoryId !== existingData.categoryId) {
+
+
+
+
+
+      const categoryDoc = await adminDb.collection('categories').doc(body.categoryId).get();
+
+
+
+
+
+      if (categoryDoc.exists) {
+
+
+
+
+
+        updatePayload.categoryId = body.categoryId;
+
+
+
+
+
+        updatePayload.categoryName = categoryDoc.data()?.name;
+
+
+
+
+
+      }
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+    // Hitung ulang data turunan (totalVideos, thumbnail)
+
+
+
+
+
+    const finalSections = updatePayload.sections || existingData.sections;
+
+
+
+
+
+    updatePayload.totalVideos = finalSections?.reduce((acc: number, section: any) => acc + (section.lessons?.length || 0), 0) || 0;
+
+
+
+
+
+    
+
+
+
+
+
+    let courseThumbnail: string | undefined;
+
+
+
+
+
+    if (finalSections && Array.isArray(finalSections)) {
+
+
+
+
+
+      for (const section of finalSections as Section[]) {
+
+
+
+
+
+        if (section.lessons && Array.isArray(section.lessons)) {
+
+
+
+
+
+          for (const lesson of section.lessons as Lesson[]) {
+
+
+
+
+
+            if (lesson.contentType === 'youtube' && lesson.url) {
+
+
+
+
+
+              const videoId = getYouTubeVideoId(lesson.url);
+
+
+
+
+
+              if (videoId) {
+
+
+
+
+
+                courseThumbnail = generateYouTubeThumbnailUrl(videoId);
+
+
+
+
+
+                break;
+
+
+
+
+
+              }
+
+
+
+
+
+            }
+
+
+
+
+
+          }
+
+
+
+
+
+        }
+
+
+
+
+
+        if (courseThumbnail) break;
+
+
+
+
+
+      }
+
+
+
+
+
+    }
+
+
+
+
+
+    
+
+
+
+
+
+    // Prioritaskan thumbnail baru, fallback ke coverImage, lalu ke thumbnail lama
+
+
+
+
+
+    updatePayload.thumbnail = courseThumbnail || updatePayload.coverImage || existingData.thumbnail;
+
+
+
+
+
+
+
+
+
+
+
+    await courseRef.update(updatePayload);
+
+
+
+
+
+
+
+
+
+
+
+    return NextResponse.json({
+
+
+
+
+
+      success: true,
+
+
+
+
+
+      message: 'Kursus berhasil diperbarui'
+
+
+
+
+
+    });
+
+
+
+
+
+
+
+
+
+
+
   } catch (error: any) {
+
+
+
+
 
     console.error('[PATCH COURSE ERROR]:', error);
 
+
+
+
+
     return NextResponse.json(
+
+
+
+
 
       { success: false, error: error.message || 'Gagal memperbarui kursus' },
 
+
+
+
+
       { status: 500 }
+
+
+
+
 
     );
 
+
+
+
+
   }
+
+
+
+
 
 }
 

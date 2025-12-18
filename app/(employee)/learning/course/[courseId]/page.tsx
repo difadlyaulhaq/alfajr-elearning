@@ -2,6 +2,8 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { BookOpen, Clock, PlayCircle, Link as LinkIcon } from "lucide-react";
 import { getCoursePageData } from "@/lib/data/courses";
+import Image from "next/image"; // Import Next.js Image component
+import { getYouTubeThumbnail } from "@/lib/utils"; // Import helper function
 import { Course, Section, Lesson } from "@/types";
 
 
@@ -18,11 +20,72 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ c
         <div className="bg-[#F8F9FA] min-h-full">
             {/* Header */}
             <div className="relative h-64 md:h-80 bg-gray-800">
-                <img 
-                    src={course.coverImage || course.thumbnail || '/logo-alfajr.png'} 
-                    alt={course.title}
-                    className="w-full h-full object-cover opacity-40"
-                />
+                {/* Logic to find the first YouTube video URL for client-side thumbnail generation */}
+                {/* This is a fallback in case course.thumbnail is not populated by server-side logic */}
+                {/* However, the server-side logic has been updated to populate course.thumbnail */}
+                {/* So, this client-side extraction is a strong fallback but course.thumbnail should usually be present */}
+                {/* If course.thumbnail exists, it will be prioritized */}
+                {(() => {
+                    let firstYouTubeVideoUrl: string | undefined;
+                    if (course.sections && course.sections.length > 0) {
+                        for (const section of course.sections) {
+                            if (section.lessons && section.lessons.length > 0) {
+                                for (const lesson of section.lessons) {
+                                    if (lesson.contentType === 'youtube' && lesson.url) {
+                                        firstYouTubeVideoUrl = lesson.url;
+                                        break;
+                                    }
+                                }
+                            }
+                            if (firstYouTubeVideoUrl) break;
+                        }
+                    }
+
+                    const generatedThumbnail = firstYouTubeVideoUrl ? getYouTubeThumbnail(firstYouTubeVideoUrl) : null;
+
+                    const initialBannerImageSrc = 
+                        course.coverImage || 
+                        course.thumbnail || 
+                        generatedThumbnail || 
+                        '/logo-alfajr.png';
+
+                    let finalBannerImageSrc = initialBannerImageSrc;
+
+                    // Final validation for Image src to prevent unconfigured host error
+                    try {
+                        const url = new URL(initialBannerImageSrc);
+                        // List of allowed hostnames (from next.config.ts and internal)
+                        const allowedHostnames = [
+                            'img.youtube.com', 
+                            'localhost', // For local development placeholder
+                            // Add other allowed hostnames from next.config.ts here if any
+                        ]; 
+                        if (!allowedHostnames.includes(url.hostname)) {
+                            console.warn(`Unconfigured hostname detected for Image src: ${url.hostname}. Falling back to default placeholder.`);
+                            finalBannerImageSrc = '/logo-alfajr.png';
+                        }
+                    } catch (error) {
+                        // If initialBannerImageSrc is not a valid URL (e.g., /logo-alfajr.png or a relative path)
+                        // This is expected for relative paths, so no change needed unless it's genuinely invalid
+                        if (!initialBannerImageSrc.startsWith('/')) { // If it's not a relative path, it's an invalid URL
+                            console.warn(`Invalid URL format for Image src: ${initialBannerImageSrc}. Falling back to default placeholder.`);
+                            finalBannerImageSrc = '/logo-alfajr.png';
+                        }
+                    }
+                    
+                    return (
+                        <Image
+                            src={finalBannerImageSrc}
+                            alt={course.title}
+                            fill
+                            className="object-cover opacity-40"
+                            priority
+                            sizes="(max-width: 768px) 100vw, 
+                                   (max-width: 1200px) 50vw, 
+                                   33vw"
+                        />
+                    );
+                })()}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
                 <div className="absolute bottom-0 left-0 p-8">
                     <span className="bg-[#C5A059] text-black text-xs font-bold px-2 py-1 rounded mb-2 inline-block">

@@ -48,6 +48,7 @@ export async function POST(request: NextRequest) {
         status: statusValue,
         lastAccess: new Date().toISOString(),
         createdAt: new Date().toISOString(),
+        lastAccessedLessonId: lessonId,
         ...(statusValue === 'completed' && { completedAt: new Date().toISOString() })
       };
 
@@ -85,6 +86,7 @@ export async function POST(request: NextRequest) {
         status: newStatus,
         lastAccess: new Date().toISOString(),
         totalLessons: totalLessons,
+        lastAccessedLessonId: lessonId,
         ...(newStatus === 'completed' && {
           completedAt: new Date().toISOString()
         })

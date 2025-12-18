@@ -57,7 +57,7 @@ export default async function MyCoursesPage() {
               <BookOpen className="h-10 w-10 text-gray-300" />
             </div>
             <h3 className="mt-2 text-xl font-bold text-gray-900">Anda Belum Punya Kursus</h3>
-            <p className="mt-2 text-gray-500 max-w-sm mx-auto">
+            <p className="mt-2 text-gray-700 max-w-sm mx-auto">
               Sepertinya Anda belum terdaftar di kursus manapun. Jelajahi katalog untuk memulai perjalanan belajar Anda!
             </p>
             <Link href="/learning/catalog" className="mt-6 inline-flex items-center gap-2 bg-brand-black hover:bg-gray-800 text-white font-bold py-3 px-8 rounded-xl transition shadow-lg hover:shadow-xl">

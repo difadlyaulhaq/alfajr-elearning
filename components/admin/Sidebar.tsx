@@ -4,7 +4,7 @@
 import React, { useState } from 'react';
 import { Home, Users, FolderTree, BookOpen, FileQuestion, BarChart3, Settings, LogOut, ChevronDown, ChevronRight, Loader, MonitorPlay, Sparkles } from 'lucide-react';
 import { useRouter, usePathname } from 'next/navigation';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/context/AuthContext';
 
 interface MenuItem {
   key: string;

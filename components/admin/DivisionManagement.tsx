@@ -1,5 +1,6 @@
 'use client';
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Plus, Search, Edit, Trash2, Loader, X, Building2, Users, User, ChevronDown } from 'lucide-react';
 
 interface Division {
@@ -187,6 +188,7 @@ const DivisionModal = ({ isOpen, onClose, onSubmit, formData, setFormData, isSub
 
 // Main Component
 const DivisionManagement = () => {
+  const router = useRouter();
   const [divisions, setDivisions] = useState<Division[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -268,6 +270,7 @@ const DivisionManagement = () => {
         setFormData(initialFormState);
         setEditingId(null);
         fetchDivisions();
+        router.refresh();
         alert(result.message);
       } else {
         alert(`Gagal: ${result.error}`);
@@ -292,6 +295,7 @@ const DivisionManagement = () => {
 
       if (response.ok) {
         fetchDivisions();
+        router.refresh();
         alert(result.message);
       } else {
         alert(`Gagal menghapus: ${result.error}`);
