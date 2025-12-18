@@ -2,6 +2,8 @@ import CourseManagement from '@/components/admin/CourseManagement';
 import { getAllCourses } from '@/lib/data/courses';
 import { getAllCategories } from '@/lib/data/categories';
 
+export const revalidate = 0; // Disable caching for this page
+
 export default async function CoursesPage() {
   // Fetch data on the server
   const courses = await getAllCourses();
