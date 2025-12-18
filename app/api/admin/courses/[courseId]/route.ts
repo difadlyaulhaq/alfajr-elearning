@@ -51,8 +51,21 @@ export async function GET(
 
 
 
-    const courseData = { id: courseDoc.id, ...courseDoc.data() };
+    const data = courseDoc.data();
 
+    if (!data) {
+      return NextResponse.json(
+        { success: false, error: 'Kursus tidak ditemukan' },
+        { status: 404 }
+      );
+    }
+
+    const courseData = { 
+      id: courseDoc.id, 
+      ...data,
+      createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : data.createdAt,
+      updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate().toISOString() : data.updatedAt,
+    };
     return NextResponse.json({ success: true, data: courseData });
 
 
@@ -227,7 +240,7 @@ export async function PATCH(
 
 
 
-      updatedAt: new Date().toISOString(),
+      updatedAt: new Date(),
 
 
 
