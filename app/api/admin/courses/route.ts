@@ -1,7 +1,7 @@
 // app/api/admin/courses/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
-import { Course, Section, Lesson } from '@/types'; // Import Section and Lesson types
+import { Course, Section, Lesson } from '@/types';
 
 function getYouTubeVideoId(url: string): string | null {
   const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
@@ -27,7 +27,6 @@ export async function GET(request: NextRequest) {
       return {
         id: doc.id,
         ...data,
-        // Ensure createdAt is a serializable format if it's a Timestamp
         createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : data.createdAt,
       };
     });
@@ -64,17 +63,18 @@ export async function POST(request: NextRequest) {
     const categoryDoc = await adminDb.collection('categories').doc(body.categoryId).get();
     const categoryName = categoryDoc.exists ? categoryDoc.data()?.name : 'Uncategorized';
 
+    // 🔥 FIX: Auto-generate thumbnail dari video YouTube pertama
     let courseThumbnail: string | undefined;
 
-    // Iterate through sections and lessons to find the first YouTube video thumbnail
     if (body.sections && Array.isArray(body.sections)) {
-      for (const section of body.sections as Section[]) { // Cast to Section[] for type safety
+      for (const section of body.sections as Section[]) {
         if (section.lessons && Array.isArray(section.lessons)) {
-          for (const lesson of section.lessons as Lesson[]) { // Cast to Lesson[]
+          for (const lesson of section.lessons as Lesson[]) {
             if (lesson.contentType === 'youtube' && lesson.url) {
               const videoId = getYouTubeVideoId(lesson.url);
               if (videoId) {
                 courseThumbnail = generateYouTubeThumbnailUrl(videoId);
+                console.log('[POST COURSE] Generated thumbnail from video:', courseThumbnail);
                 break; 
               }
             }
@@ -87,19 +87,30 @@ export async function POST(request: NextRequest) {
     const newCourse: Omit<Course, 'id'> = {
       ...body,
       categoryName: categoryName,
-      thumbnail: courseThumbnail || body.thumbnail, 
+      thumbnail: courseThumbnail || body.coverImage || body.thumbnail, // Prioritas: video > coverImage > existing thumbnail
       totalVideos: body.sections?.reduce((acc: number, section: any) => acc + (section.lessons?.length || 0), 0) || 0,
       totalStudents: 0, 
       createdAt: new Date(),
       updatedAt: new Date(),
     };
 
+    console.log('[POST COURSE] Creating course with thumbnail:', newCourse.thumbnail);
+
     const docRef = await adminDb.collection('courses').add(newCourse);
+
+    // 🔥 FIX: Fetch kembali data yang baru dibuat untuk memastikan konsistensi
+    const createdDoc = await docRef.get();
+    const createdData = createdDoc.data();
 
     return NextResponse.json({ 
         success: true, 
         message: 'Kursus berhasil dibuat', 
-        data: { id: docRef.id, ...newCourse } 
+        data: { 
+          id: docRef.id, 
+          ...createdData,
+          createdAt: createdData?.createdAt?.toDate ? createdData.createdAt.toDate().toISOString() : createdData?.createdAt,
+          updatedAt: createdData?.updatedAt?.toDate ? createdData.updatedAt.toDate().toISOString() : createdData?.updatedAt,
+        } 
     }, { status: 201 });
 
   } catch (error: any) {
