@@ -28,11 +28,16 @@ export const StatusBadge = ({ status }: { status: string }) => {
 };
 
 // Kartu Kursus dengan Desain Baru (Black & Gold Theme)
-export const CourseCard: React.FC<{ course: Omit<Course, 'status'> & Progress }> = ({ course }) => {
+export const CourseCard: React.FC<{ course: Omit<Course, 'status'> & Progress & { lastAccessedLessonId?: string } }> = ({ course }) => {
   const isCompleted = course.status === 'completed';
 
+  const continueUrl =
+    course.status === 'in-progress' && course.lastAccessedLessonId
+      ? `/learning/course/${course.id}/lesson/${course.lastAccessedLessonId}`
+      : `/learning/course/${course.id}`;
+
   return (
-    <Link href={`/learning/course/${course.id}`} className="block h-full">
+    <Link href={continueUrl} className="block h-full">
       <div className="group bg-white rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100 hover:border-brand-gold h-full flex flex-col relative">
         
         {/* Thumbnail Area */}

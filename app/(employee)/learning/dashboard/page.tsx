@@ -12,6 +12,7 @@ const EmployeeDashboardPage = () => {
   const { user, isLoading: isAuthLoading } = useAuth();
   const [courses, setCourses] = useState<Course[]>([]);
   const [progress, setProgress] = useState<Record<string, Progress>>({});
+  const [ongoingCourses, setOngoingCourses] = useState<(Omit<Course, 'status'> & Progress)[]>([]);
   const [isLoadingData, setIsLoadingData] = useState(true);
 
   useEffect(() => {
@@ -20,9 +21,9 @@ const EmployeeDashboardPage = () => {
       
       setIsLoadingData(true);
       try {
-        const [coursesRes, progressRes] = await Promise.all([
+        const [coursesRes, historyRes] = await Promise.all([
           fetch('/api/admin/courses'),
-          fetch(`/api/progress/${user.uid}`)
+          fetch('/api/learning/history')
         ]);
         
         const coursesData = await coursesRes.json();
@@ -30,12 +31,17 @@ const EmployeeDashboardPage = () => {
           setCourses(coursesData.data.filter((c: any) => c.status === 'active'));
         }
 
-        const progressData = await progressRes.json();
-        if (progressData.success) {
-          const progressMap = progressData.data.reduce((acc: Record<string, Progress>, p: Progress) => {
-            acc[p.courseId] = p;
+        const historyData = await historyRes.json();
+        if (historyData.success) {
+          const allUserCourses = historyData.data as (Omit<Course, 'status'> & Progress)[];
+          
+          const ongoing = allUserCourses.filter(c => c.status === 'in-progress');
+          setOngoingCourses(ongoing);
+
+          const progressMap = allUserCourses.reduce((acc, p) => {
+            acc[p.id] = p;
             return acc;
-          }, {});
+          }, {} as Record<string, Progress>);
           setProgress(progressMap);
         }
       } catch (error) {
@@ -51,10 +57,6 @@ const EmployeeDashboardPage = () => {
       setIsLoadingData(false);
     }
   }, [user, isAuthLoading]);
-  
-  const ongoingCourses = useMemo(() => {
-    return courses.filter(c => progress[c.id] && progress[c.id].status === 'in-progress');
-  }, [courses, progress]);
 
   if (isAuthLoading) {
     return (
@@ -104,11 +106,9 @@ const EmployeeDashboardPage = () => {
                         <p className="text-sm text-gray-600 mt-1">Selesaikan kursus yang sedang kamu ikuti</p>
                     </div>
                     <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {ongoingCourses.map(course => {
-                            const progressData = progress[course.id];
-                            const combinedData = { ...course, ...progressData };
-                            return <CourseCard key={course.id} course={combinedData} />
-                        })}
+                        {ongoingCourses.map(course => (
+                          <CourseCard key={course.id} course={course} />
+                        ))}
                     </div>
                 </div>
             )}

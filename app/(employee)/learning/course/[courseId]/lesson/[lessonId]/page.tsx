@@ -33,7 +33,9 @@ export default async function LessonPage({
   }
 
   const allLessons = course.sections.flatMap((section) => section.lessons);
-  const currentLessonIndex = allLessons.findIndex((l) => l.id === lessonId);
+  const currentLessonIndex = allLessons.findIndex(
+    (l) => String(l.id) === String(lessonId)
+  );
 
   if (currentLessonIndex === -1) {
     notFound();

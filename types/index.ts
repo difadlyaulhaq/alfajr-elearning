@@ -48,6 +48,7 @@ export interface Progress {
   lastAccess: Date;
   completedAt?: Date;
   completedLessons: string[];
+  lastAccessedLessonId?: string;
 }
 export interface Lesson {
   id: string;

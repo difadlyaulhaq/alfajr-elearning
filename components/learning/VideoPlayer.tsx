@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { MarkdownRenderer } from "@/components/shared/MarkdownRenderer";
+import { ScreenProtection } from "@/components/shared/ScreenProtection";
 
 interface VideoPlayerProps {
   courseId: string;
@@ -194,6 +195,7 @@ export function VideoPlayer({
   }
 
   return (
+    <ScreenProtection userEmail={user?.email ?? ""} videoElementRef={videoElementRef}>
       <div className="flex-1 flex flex-col bg-[#F8F9FA]">
         <header className="bg-white p-4 border-b flex items-center justify-between sticky top-0 z-10">
           <div className="flex-1">
@@ -283,5 +285,6 @@ export function VideoPlayer({
           </div>
         </div>
       </div>
+    </ScreenProtection>
   );
 }
