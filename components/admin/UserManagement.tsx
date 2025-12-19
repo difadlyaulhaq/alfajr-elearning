@@ -1,9 +1,12 @@
 'use client';
-import React, { useState, useEffect } from 'react';
-import { Plus, Search, Edit, Trash2, UserX, UserCheck, Mail, Building, Loader, X, Eye } from 'lucide-react';
+import { Listbox } from '@headlessui/react';
+import { CheckIcon, ChevronUpDownIcon } from '@heroicons/react/20/solid';
+import { Menu, Transition } from '@headlessui/react';
+import { Plus, Search, Edit, Trash2, UserX, UserCheck, Mail, Building, Loader, X, Eye, MoreVertical, Filter } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Button from '@/components/shared/Button';
 import { ResponsiveTable } from '@/components/shared/ResponsiveTable';
+import React, { useState, useEffect, Fragment } from 'react';
 
 // Definisikan tipe data User
 interface User {
@@ -172,6 +175,7 @@ const UserManagement = () => {
   const [divisions, setDivisions] = useState<Division[]>([]); // 🔥 State untuk divisions
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterDivision, setFilterDivision] = useState('all');
   
@@ -451,7 +455,7 @@ const UserManagement = () => {
   return (
     <div className="min-h-screen bg-brand-gray">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 p-4 md:px-8 md:py-6 sticky top-0 z-10">
+      <div className="bg-white border-b border-gray-200 p-4 md:px-8 md:py-6 sticky top-0 z-10 hidden md:block">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div>
             <h1 className="text-xl md:text-2xl font-bold text-black">Manajemen Pengguna</h1>
@@ -470,7 +474,19 @@ const UserManagement = () => {
 
       {/* Filters */}
       <div className="p-4 md:p-8">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+        {/* Mobile Filter Button */}
+        <div className="md:hidden mb-4">
+          <button 
+            onClick={() => setIsFilterOpen(true)}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg bg-white hover:bg-gray-50 font-semibold"
+          >
+            <Filter size={16} />
+            <span>Filter</span>
+          </button>
+        </div>
+
+        {/* Desktop Filter Bar */}
+        <div className="hidden md:block bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
@@ -482,18 +498,82 @@ const UserManagement = () => {
                 className="w-full text-black pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#C5A059] outline-none transition-all"
               />
             </div>
-            <select
-              value={filterDivision}
-              onChange={(e) => setFilterDivision(e.target.value)}
-              className="px-4 text-black py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#C5A059] outline-none cursor-pointer bg-white"
-            >
-              <option value="all">Semua Divisi</option>
-              {divisions.map((div) => (
-                <option key={div.id} value={div.name}>
-                  {div.name}
-                </option>
-              ))}
-            </select>
+            <Listbox value={filterDivision} onChange={setFilterDivision}>
+              <div className="relative">
+                <Listbox.Button className="w-full px-4 py-2.5 text-left bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#C5A059] outline-none cursor-pointer text-black">
+                  <span className="block truncate">{filterDivision === 'all' ? 'Semua Divisi' : filterDivision}</span>
+                  <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
+                    <ChevronUpDownIcon
+                      className="h-5 w-5 text-gray-400"
+                      aria-hidden="true"
+                    />
+                  </span>
+                </Listbox.Button>
+                <Transition
+                  as={Fragment}
+                  leave="transition ease-in duration-100"
+                  leaveFrom="opacity-100"
+                  leaveTo="opacity-0"
+                >
+                  <Listbox.Options className="absolute mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm z-10">
+                    <Listbox.Option
+                      key="all-divisions"
+                      className={({ active }) =>
+                        `relative cursor-default select-none py-2 pl-10 pr-4 ${
+                          active ? 'bg-amber-100 text-amber-900' : 'text-gray-900'
+                        }`
+                      }
+                      value="all"
+                    >
+                      {({ selected }) => (
+                        <>
+                          <span
+                            className={`block truncate ${
+                              selected ? 'font-medium' : 'font-normal'
+                            }`}
+                          >
+                            Semua Divisi
+                          </span>
+                          {selected ? (
+                            <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-amber-600">
+                              <CheckIcon className="h-5 w-5" aria-hidden="true" />
+                            </span>
+                          ) : null}
+                        </>
+                      )}
+                    </Listbox.Option>
+                    {divisions.map((div) => (
+                      <Listbox.Option
+                        key={div.id}
+                        className={({ active }) =>
+                          `relative cursor-default select-none py-2 pl-10 pr-4 ${
+                            active ? 'bg-amber-100 text-amber-900' : 'text-gray-900'
+                          }`
+                        }
+                        value={div.name}
+                      >
+                        {({ selected }) => (
+                          <>
+                            <span
+                              className={`block truncate ${
+                                selected ? 'font-medium' : 'font-normal'
+                              }`}
+                            >
+                              {div.name}
+                            </span>
+                            {selected ? (
+                              <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-amber-600">
+                                <CheckIcon className="h-5 w-5" aria-hidden="true" />
+                              </span>
+                            ) : null}
+                          </>
+                        )}
+                      </Listbox.Option>
+                    ))}
+                  </Listbox.Options>
+                </Transition>
+              </div>
+            </Listbox>
           </div>
         </div>
 
@@ -571,42 +651,201 @@ const UserManagement = () => {
                       </span>
                     </td>
 
-                    {/* --- KOLOM AKSI (DIPERBAIKI TOMBOLNYA) --- */}
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2 opacity-100"> {/* Opacity 100 agar selalu terlihat di mobile/tablet */}
+                                        {/* --- KOLOM AKSI (RESPONSIF) --- */}
 
-                        {/* Tombol Edit */}
-                        <button
-                          onClick={() => handleEditClick(user)}
-                          className="group flex items-center justify-center w-8 h-8 rounded-lg border border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white hover:shadow-md transition-all duration-200"
-                          title="Edit Data"
-                        >
-                          <Edit size={16} />
-                        </button>
+                                        <td className="px-6 py-4 text-right">
 
-                        {/* Tombol Reset Akses / Toggle Status */}
-                        <button
-                          onClick={() => handleToggleStatus(user.id, user.status)}
-                          className={`group flex items-center justify-center w-8 h-8 rounded-lg border transition-all duration-200 hover:text-white hover:shadow-md ${user.status === 'active'
-                              ? 'border-orange-200 bg-orange-50 text-orange-600 hover:bg-orange-500'
-                              : 'border-green-200 bg-green-50 text-green-600 hover:bg-green-600'
-                            }`}
-                          title={user.status === 'active' ? "Non-aktifkan (Blokir Akses)" : "Aktifkan Kembali"}
-                        >
-                          {user.status === 'active' ? <UserX size={16} /> : <UserCheck size={16} />}
-                        </button>
+                                          <div className="hidden md:flex items-center gap-2">
 
-                        {/* Tombol Delete */}
-                        <button
-                          onClick={() => handleDeleteUser(user.id, user.name)}
-                          className="group flex items-center justify-center w-8 h-8 rounded-lg border border-red-200 bg-red-50 text-red-600 hover:bg-red-600 hover:text-white hover:shadow-md transition-all duration-200"
-                          title="Hapus User"
-                        >
-                          <Trash2 size={16} />
-                        </button>
+                                            <button 
 
-                      </div>
-                    </td>
+                                              onClick={() => handleEditClick(user)}
+
+                                              className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+
+                                              title="Edit Data"
+
+                                            >
+
+                                              <Edit size={16} />
+
+                                            </button>
+
+                                            <button 
+
+                                              onClick={() => handleToggleStatus(user.id, user.status)}
+
+                                              className={`p-2 rounded-lg transition-colors ${
+
+                                                user.status === 'active' 
+
+                                                  ? 'text-orange-600 hover:bg-orange-100' 
+
+                                                  : 'text-green-600 hover:bg-green-100'
+
+                                              }`}
+
+                                              title={user.status === 'active' ? "Non-aktifkan" : "Aktifkan"}
+
+                                            >
+
+                                              {user.status === 'active' ? <UserX size={16} /> : <UserCheck size={16} />}
+
+                                            </button>
+
+                                            <button 
+
+                                              onClick={() => handleDeleteUser(user.id, user.name)}
+
+                                              className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
+
+                                              title="Hapus User"
+
+                                            >
+
+                                              <Trash2 size={16} />
+
+                                            </button>
+
+                                          </div>
+
+                                          <div className="md:hidden">
+
+                                            <Menu as="div" className="relative inline-block text-left">
+
+                                              <div>
+
+                                                <Menu.Button className="inline-flex justify-center w-full px-2 py-2 text-sm font-medium text-gray-700 bg-white rounded-md hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75">
+
+                                                  <MoreVertical className="w-5 h-5" aria-hidden="true" />
+
+                                                </Menu.Button>
+
+                                              </div>
+
+                                              <Transition
+
+                                                as={Fragment}
+
+                                                enter="transition ease-out duration-100"
+
+                                                enterFrom="transform opacity-0 scale-95"
+
+                                                enterTo="transform opacity-100 scale-100"
+
+                                                leave="transition ease-in duration-75"
+
+                                                leaveFrom="transform opacity-100 scale-100"
+
+                                                leaveTo="transform opacity-0 scale-95"
+
+                                              >
+
+                                                <Menu.Items className="absolute right-0 w-56 mt-2 origin-top-right bg-white divide-y divide-gray-100 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-10">
+
+                                                  <div className="px-1 py-1 ">
+
+                                                    <Menu.Item>
+
+                                                      {({ active }) => (
+
+                                                        <button
+
+                                                          onClick={() => handleEditClick(user)}
+
+                                                          className={`${
+
+                                                            active ? 'bg-blue-500 text-white' : 'text-gray-900'
+
+                                                          } group flex rounded-md items-center w-full px-2 py-2 text-sm`}
+
+                                                        >
+
+                                                          <Edit className="w-5 h-5 mr-2" aria-hidden="true" />
+
+                                                          Edit
+
+                                                        </button>
+
+                                                      )}
+
+                                                    </Menu.Item>
+
+                                                    <Menu.Item>
+
+                                                      {({ active }) => (
+
+                                                        <button
+
+                                                          onClick={() => handleToggleStatus(user.id, user.status)}
+
+                                                          className={`${
+
+                                                            active ? 'bg-yellow-500 text-white' : 'text-gray-900'
+
+                                                          } group flex rounded-md items-center w-full px-2 py-2 text-sm`}
+
+                                                        >
+
+                                                          {user.status === 'active' ? (
+
+                                                            <UserX className="w-5 h-5 mr-2" aria-hidden="true" />
+
+                                                          ) : (
+
+                                                            <UserCheck className="w-5 h-5 mr-2" aria-hidden="true" />
+
+                                                          )}
+
+                                                          {user.status === 'active' ? 'Non-aktifkan' : 'Aktifkan'}
+
+                                                        </button>
+
+                                                      )}
+
+                                                    </Menu.Item>
+
+                                                  </div>
+
+                                                  <div className="px-1 py-1">
+
+                                                    <Menu.Item>
+
+                                                      {({ active }) => (
+
+                                                        <button
+
+                                                          onClick={() => handleDeleteUser(user.id, user.name)}
+
+                                                          className={`${
+
+                                                            active ? 'bg-red-500 text-white' : 'text-gray-900'
+
+                                                          } group flex rounded-md items-center w-full px-2 py-2 text-sm`}
+
+                                                        >
+
+                                                          <Trash2 className="w-5 h-5 mr-2" aria-hidden="true" />
+
+                                                          Hapus
+
+                                                        </button>
+
+                                                      )}
+
+                                                    </Menu.Item>
+
+                                                  </div>
+
+                                                </Menu.Items>
+
+                                              </Transition>
+
+                                            </Menu>
+
+                                          </div>
+
+                                        </td>
                   </tr>
                 ))
               )}

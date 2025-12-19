@@ -603,7 +603,7 @@ const CourseManagement: React.FC<CourseManagementProps> = ({ initialCourses, ini
 
   return (
     <div className="min-h-screen bg-[#F8F9FA]">
-      <div className="bg-white border-b border-gray-200 p-4 md:px-8 md:py-6 flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-0">
+      <div className="bg-white border-b border-gray-200 p-4 md:px-8 md:py-6 flex-col md:flex-row md:items-center justify-between gap-4 md:gap-0 hidden md:flex">
         <div><h1 className="text-xl md:text-2xl font-bold text-black">Kelola Kursus</h1><p className="text-gray-600 mt-1">Buat dan kelola materi pembelajaran</p></div>
         <button onClick={handleOpenAdd} className="flex items-center justify-center space-x-2 bg-[#C5A059] text-black w-full md:w-auto h-12 md:h-auto md:px-5 md:py-2.5 rounded-lg hover:bg-[#B08F4A] transition-colors font-semibold shadow-md">
             <Plus size={20} />

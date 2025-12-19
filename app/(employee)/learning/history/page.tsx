@@ -85,25 +85,25 @@ const LearningHistoryPage = () => {
             backgroundSize: '40px 40px'
           }}></div>
         </div>
-        <div className="relative container mx-auto px-6 py-12">
+        <div className="relative container mx-auto p-4 md:px-6 md:py-12">
            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
               <div className="flex items-center gap-4">
                 <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-brand-gold to-yellow-700 flex items-center justify-center shadow-lg border-2 border-white/10 text-white">
                   <History size={32} />
                 </div>
                 <div>
-                  <h1 className="text-3xl font-bold text-white tracking-tight">Riwayat Belajar</h1>
+                  <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight">Riwayat Belajar</h1>
                   <p className="text-brand-gold/80 mt-1 font-medium">Arsip perjalanan pengembangan diri Anda</p>
                 </div>
               </div>
 
               {/* Mini Stats di Header */}
-              <div className="flex gap-4 text-white">
-                <div className="text-center px-4 py-2 bg-white/5 rounded-lg border border-white/10 backdrop-blur-sm">
+              <div className="flex gap-2 md:gap-4 text-white self-stretch">
+                <div className="text-center px-4 py-2 bg-white/5 rounded-lg border border-white/10 backdrop-blur-sm flex-1">
                   <div className="text-2xl font-bold text-brand-gold">{stats.total}</div>
                   <div className="text-[10px] uppercase tracking-wider opacity-70">Total Kursus</div>
                 </div>
-                <div className="text-center px-4 py-2 bg-white/5 rounded-lg border border-white/10 backdrop-blur-sm">
+                <div className="text-center px-4 py-2 bg-white/5 rounded-lg border border-white/10 backdrop-blur-sm flex-1">
                   <div className="text-2xl font-bold text-green-400">{stats.completed}</div>
                   <div className="text-[10px] uppercase tracking-wider opacity-70">Selesai</div>
                 </div>
@@ -112,7 +112,7 @@ const LearningHistoryPage = () => {
         </div>
       </div>
 
-      <div className="container mx-auto px-6">
+      <div className="container mx-auto p-4 md:px-6">
         
         {/* Controls Bar: Search & Filter Tabs */}
         <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 mb-8 flex flex-col md:flex-row justify-between items-center gap-4 sticky top-4 z-10">
