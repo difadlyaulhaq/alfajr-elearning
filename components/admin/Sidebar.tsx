@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Home, Users, FolderTree, BookOpen, FileQuestion, BarChart3, Settings, LogOut, ChevronDown, ChevronRight, Loader, MonitorPlay, Sparkles } from 'lucide-react';
+import { Home, Users, FolderTree, BookOpen, BarChart3, LogOut, ChevronDown, ChevronRight, Loader, MonitorPlay, Sparkles, Menu, X } from 'lucide-react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 
@@ -27,6 +27,7 @@ const AdminSidebar = () => {
   const pathname = usePathname();
   const { logout, isLoading: isLoggingOut } = useAuth();
   const [expandedMenus, setExpandedMenus] = useState<Record<string, boolean>>({});
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const toggleSubmenu = (key: string) => {
     setExpandedMenus(prev => ({
@@ -42,6 +43,13 @@ const AdminSidebar = () => {
 
   const handleLogout = async () => {
     await logout();
+  };
+
+  const handleNavigation = (path?: string) => {
+    if (path) {
+      router.push(path);
+      setIsMobileMenuOpen(false); // Close mobile menu after navigation
+    }
   };
 
   const menuItems: MenuItem[] = [
@@ -87,15 +95,15 @@ const AdminSidebar = () => {
     }
   ];
 
-  return (
-    <div className="w-64 h-screen bg-gradient-to-b from-black via-gray-900 to-black text-white flex flex-col fixed left-0 top-0 z-40 shadow-2xl">
-      {/* Logo Section with Glow Effect */}
-      <div className="p-6 border-b border-gray-800/50 relative">
+  const SidebarContent = () => (
+    <>
+      {/* Logo Section */}
+      <div className="p-4 md:p-6 border-b border-gray-800/50 relative">
         <div className="absolute inset-0 bg-gradient-to-r from-[#C5A059]/10 to-transparent"></div>
         <div className="relative flex items-center space-x-3">
           <div className="relative">
             <div className="absolute inset-0 bg-gradient-to-br from-[#C5A059] to-[#8B7355] rounded-xl blur-md opacity-50"></div>
-            <div className="relative w-12 h-12 bg-gradient-to-br from-[#C5A059] to-[#8B7355] rounded-xl flex items-center justify-center overflow-hidden shadow-xl border border-[#C5A059]/30">
+            <div className="relative w-10 h-10 md:w-12 md:h-12 bg-gradient-to-br from-[#C5A059] to-[#8B7355] rounded-xl flex items-center justify-center overflow-hidden shadow-xl border border-[#C5A059]/30">
               <img
                 src="/logo-alfajr.png"
                 alt="Logo Alfajr"
@@ -104,56 +112,54 @@ const AdminSidebar = () => {
             </div>
           </div>
           <div>
-            <h1 className="text-lg font-bold bg-gradient-to-r from-[#C5A059] via-[#D4AF37] to-[#C5A059] bg-clip-text text-transparent">
+            <h1 className="text-base md:text-lg font-bold bg-gradient-to-r from-[#C5A059] via-[#D4AF37] to-[#C5A059] bg-clip-text text-transparent">
               Alfajr Umroh
             </h1>
             <div className="flex items-center gap-1.5 mt-0.5">
               <Sparkles className="text-[#C5A059]" size={12} />
-              <p className="text-xs text-gray-400 font-semibold">Admin Panel</p>
+              <p className="text-[10px] md:text-xs text-gray-400 font-semibold">Admin Panel</p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Menu Items with Custom Scrollbar */}
-      <nav className="flex-1 overflow-y-auto py-4 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-gray-900">
+      {/* Menu Items */}
+      <nav className="flex-1 overflow-y-auto py-2 md:py-4 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-gray-900">
         {menuItems.map((item) => (
           <div key={item.key}>
             <button
               onClick={() => {
                 if (item.hasSubmenu) {
                   toggleSubmenu(item.key);
-                } else if (item.path) {
-                  router.push(item.path);
+                } else {
+                  handleNavigation(item.path);
                 }
               }}
-              className={`w-full flex items-center justify-between px-6 py-3 text-left transition-all group relative ${
+              className={`w-full flex items-center justify-between px-4 md:px-6 py-2.5 md:py-3 text-left transition-all group relative ${
                 isActive(item.path)
                   ? 'bg-gradient-to-r from-[#C5A059] to-amber-600 text-black'
                   : 'text-gray-300 hover:bg-gray-800/50'
               }`}
             >
-
-              
-              <div className="flex items-center space-x-3">
-                <div className={`p-1.5 rounded-lg transition-all ${
+              <div className="flex items-center space-x-2 md:space-x-3">
+                <div className={`p-1 md:p-1.5 rounded-lg transition-all ${
                   isActive(item.path) 
                     ? 'bg-black/10' 
                     : 'bg-gray-800/50 group-hover:bg-[#C5A059]/20'
                 }`}>
                   <item.icon 
-                    size={20} 
+                    size={18} 
                     className={isActive(item.path) ? 'text-black' : 'text-[#C5A059]'} 
                   />
                 </div>
-                <span className={`font-medium text-sm ${isActive(item.path) ? 'font-bold' : ''}`}>
+                <span className={`font-medium text-xs md:text-sm ${isActive(item.path) ? 'font-bold' : ''}`}>
                   {item.label}
                 </span>
               </div>
               
               <div className="flex items-center space-x-2">
                 {item.badge && (
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                  <span className={`text-[9px] md:text-[10px] px-1.5 md:px-2 py-0.5 rounded-full font-bold ${
                     isActive(item.path)
                       ? 'bg-black/20 text-black'
                       : 'bg-gradient-to-r from-amber-500 to-orange-600 text-white'
@@ -164,23 +170,23 @@ const AdminSidebar = () => {
                 {item.hasSubmenu && (
                   <div className={`transition-transform ${expandedMenus[item.key] ? 'rotate-0' : ''}`}>
                     {expandedMenus[item.key] ? (
-                      <ChevronDown size={16} className={isActive(item.path) ? 'text-black' : 'text-gray-400'} />
+                      <ChevronDown size={14} className={isActive(item.path) ? 'text-black' : 'text-gray-400'} />
                     ) : (
-                      <ChevronRight size={16} className={isActive(item.path) ? 'text-black' : 'text-gray-400'} />
+                      <ChevronRight size={14} className={isActive(item.path) ? 'text-black' : 'text-gray-400'} />
                     )}
                   </div>
                 )}
               </div>
             </button>
 
-            {/* Submenu with Animation */}
+            {/* Submenu */}
             {item.hasSubmenu && expandedMenus[item.key] && (
-              <div className="bg-gradient-to-r from-gray-800/30 to-transparent border-l-2 border-[#C5A059]/30 ml-6 my-1 animate-fadeIn">
+              <div className="bg-gradient-to-r from-gray-800/30 to-transparent border-l-2 border-[#C5A059]/30 ml-4 md:ml-6 my-1 animate-fadeIn">
                 {item.subItems?.map((subItem) => (
                   <button
                     key={subItem.key}
-                    onClick={() => router.push(subItem.path)}
-                    className={`w-full flex items-center px-4 py-2.5 text-left text-sm transition-all relative group ${
+                    onClick={() => handleNavigation(subItem.path)}
+                    className={`w-full flex items-center px-3 md:px-4 py-2 md:py-2.5 text-left text-xs md:text-sm transition-all relative group ${
                       isActive(subItem.path)
                         ? 'text-[#C5A059] font-semibold bg-[#C5A059]/10'
                         : 'text-gray-400 hover:text-white hover:bg-gray-800/30'
@@ -198,28 +204,58 @@ const AdminSidebar = () => {
         ))}
       </nav>
 
-      {/* Logout Button with Gradient */}
-      <div className="border-t border-gray-800/50 p-4 relative">
+      {/* Logout Button */}
+      <div className="border-t border-gray-800/50 p-3 md:p-4 relative">
         <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
         <button 
           onClick={handleLogout}
           disabled={isLoggingOut}
-          className="relative w-full flex items-center justify-center space-x-3 px-4 py-3 text-gray-300 hover:bg-gradient-to-r hover:from-red-900/30 hover:to-red-800/30 hover:text-red-400 rounded-xl transition-all group disabled:opacity-50 disabled:cursor-not-allowed border border-gray-800/50 hover:border-red-500/30"
+          className="relative w-full flex items-center justify-center space-x-2 md:space-x-3 px-3 md:px-4 py-2.5 md:py-3 text-gray-300 hover:bg-gradient-to-r hover:from-red-900/30 hover:to-red-800/30 hover:text-red-400 rounded-xl transition-all group disabled:opacity-50 disabled:cursor-not-allowed border border-gray-800/50 hover:border-red-500/30 text-xs md:text-sm"
         >
           {isLoggingOut ? (
-            <Loader className="animate-spin" size={20} />
+            <Loader className="animate-spin" size={18} />
           ) : (
-            <LogOut size={20} className="group-hover:text-red-400" />
+            <LogOut size={18} className="group-hover:text-red-400" />
           )}
-          <span className="font-semibold text-sm">
+          <span className="font-semibold">
             {isLoggingOut ? 'Keluar...' : 'Logout'}
           </span>
         </button>
       </div>
+    </>
+  );
 
-      {/* Bottom Gradient Overlay */}
-      <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-black to-transparent pointer-events-none"></div>
-    </div>
+  return (
+    <>
+      {/* Mobile Menu Button */}
+      <button
+        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+        className="md:hidden fixed top-4 left-4 z-50 p-2 bg-black text-white rounded-lg shadow-lg"
+      >
+        {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+      </button>
+
+      {/* Mobile Sidebar Overlay */}
+      {isMobileMenuOpen && (
+        <div 
+          className="md:hidden fixed inset-0 bg-black/50 z-40"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+
+      {/* Sidebar - Mobile Drawer / Desktop Fixed */}
+      <div className={`
+        fixed top-0 left-0 h-screen bg-gradient-to-b from-black via-gray-900 to-black text-white flex flex-col shadow-2xl z-40 transition-transform duration-300 ease-in-out
+        ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
+        md:translate-x-0 md:w-64 w-64
+      `}>
+        <SidebarContent />
+        <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-black to-transparent pointer-events-none"></div>
+      </div>
+
+      {/* Spacer for desktop layout */}
+      <div className="hidden md:block w-64" />
+    </>
   );
 };
 

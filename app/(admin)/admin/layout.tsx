@@ -30,8 +30,8 @@ export default function AdminLayout({
         <Toaster position="top-center" reverseOrder={false} />
         <div className="flex min-h-screen bg-brand-gray">
           <AdminSidebar />
-          {/* Main Content */}
-          <main className="flex-1 ml-64">
+          {/* Main Content - Responsive padding for mobile */}
+          <main className="flex-1 w-full md:ml-0">
             {children}
           </main>
         </div>

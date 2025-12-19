@@ -205,7 +205,7 @@ export function VideoPlayer({
             >
               <ArrowLeft size={16} /> Kembali ke Detail Kursus
             </Link>
-            <h1 className="text-xl font-bold text-black mt-1 truncate">
+            <h1 className="text-lg md:text-xl font-bold text-black mt-1 truncate">
               {lesson.title}
             </h1>
           </div>
@@ -253,7 +253,7 @@ export function VideoPlayer({
             </div>
           )}
 
-          <div className="mt-6 bg-white p-6 rounded-lg border flex items-center justify-between">
+          <div className="mt-6 bg-white p-6 rounded-lg border flex flex-col md:flex-row md:items-center md:justify-between gap-4 text-center md:text-left">
             <div>
               <h2 className="text-lg font-bold text-black">{lesson.title}</h2>
               <p className="text-sm text-gray-500">
@@ -267,7 +267,7 @@ export function VideoPlayer({
             <button
               onClick={handleMarkComplete}
               disabled={!isVideoCompleted || isUpdating}
-              className={`flex items-center gap-2 px-5 py-2.5 font-semibold text-white rounded-lg transition-all ${
+              className={`w-full md:w-auto flex items-center justify-center gap-2 px-5 py-2.5 font-semibold text-white rounded-lg transition-all ${
                 isVideoCompleted && !isUpdating 
                   ? "bg-green-600 hover:bg-green-700 shadow-md" 
                   : "bg-gray-400 cursor-not-allowed"

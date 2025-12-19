@@ -603,9 +603,12 @@ const CourseManagement: React.FC<CourseManagementProps> = ({ initialCourses, ini
 
   return (
     <div className="min-h-screen bg-[#F8F9FA]">
-      <div className="bg-white border-b border-gray-200 px-8 py-6 flex items-center justify-between">
-        <div><h1 className="text-2xl font-bold text-black">Kelola Kursus</h1><p className="text-gray-600 mt-1">Buat dan kelola materi pembelajaran</p></div>
-        <button onClick={handleOpenAdd} className="flex items-center space-x-2 bg-[#C5A059] text-black px-5 py-2.5 rounded-lg hover:bg-[#B08F4A] transition-colors font-semibold shadow-md"><Plus size={20} /><span>Buat Kursus Baru</span></button>
+      <div className="bg-white border-b border-gray-200 p-4 md:px-8 md:py-6 flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-0">
+        <div><h1 className="text-xl md:text-2xl font-bold text-black">Kelola Kursus</h1><p className="text-gray-600 mt-1">Buat dan kelola materi pembelajaran</p></div>
+        <button onClick={handleOpenAdd} className="flex items-center justify-center space-x-2 bg-[#C5A059] text-black w-full md:w-auto h-12 md:h-auto md:px-5 md:py-2.5 rounded-lg hover:bg-[#B08F4A] transition-colors font-semibold shadow-md">
+            <Plus size={20} />
+            <span className="md:inline">Buat Kursus Baru</span>
+        </button>
       </div>
 
       <div className="p-8">
@@ -635,16 +638,18 @@ const CourseManagement: React.FC<CourseManagementProps> = ({ initialCourses, ini
       </div>
 
       {showModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl w-full max-w-5xl h-[90vh] flex flex-col shadow-2xl">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 md:p-4">
+          <div className="bg-white rounded-none md:rounded-xl w-full h-full md:max-w-5xl md:h-[90vh] flex flex-col shadow-2xl">
             <div className="flex items-center justify-between p-6 border-b"><h2 className="text-xl font-bold text-black">{isEditing ? 'Edit Kursus' : 'Buat Kursus Baru'}</h2><button onClick={() => setShowModal(false)} disabled={isLoading}><X size={24} className="text-gray-400 hover:text-red-500" /></button></div>
-            <div className="flex justify-center py-4 bg-gray-50 border-b"><div className="flex space-x-4">
-              <button onClick={() => setCurrentStep(1)} disabled={isLoading} className={`px-4 py-2 rounded-full flex items-center space-x-2 ${currentStep === 1 ? 'bg-[#FFF8E7] text-[#C5A059] border border-[#C5A059]' : 'text-gray-400'}`}><span className="w-6 h-6 rounded-full bg-current text-white flex items-center justify-center text-xs">1</span><span className="font-semibold text-sm">Informasi Dasar</span></button>
-              <div className="w-8 h-px bg-gray-300 self-center"></div>
-              <button onClick={() => isDirty ? handleSaveAndContinue() : setCurrentStep(2)} disabled={!isEditing && !formData.title} className={`px-4 py-2 rounded-full flex items-center space-x-2 ${currentStep === 2 ? 'bg-[#FFF8E7] text-[#C5A059] border border-[#C5A059]' : 'text-gray-400'}`}><span className="w-6 h-6 rounded-full bg-current text-white flex items-center justify-center text-xs">2</span><span className="font-semibold text-sm">Kurikulum</span></button>
-              <div className="w-8 h-px bg-gray-300 self-center"></div>
-              <button onClick={() => isDirty ? handleSaveAndContinue() : setCurrentStep(3)} disabled={!isEditing && !formData.title} className={`px-4 py-2 rounded-full flex items-center space-x-2 ${currentStep === 3 ? 'bg-[#FFF8E7] text-[#C5A059] border border-[#C5A059]' : 'text-gray-400'}`}><span className="w-6 h-6 rounded-full bg-current text-white flex items-center justify-center text-xs">3</span><span className="font-semibold text-sm">Enrollment</span></button>
-            </div></div>
+            <div className="flex justify-center py-4 bg-gray-50 border-b">
+              <div className="flex items-center space-x-1 md:space-x-4">
+                <button onClick={() => setCurrentStep(1)} disabled={isLoading} className={`px-3 md:px-4 py-2 rounded-full flex items-center space-x-2 ${currentStep === 1 ? 'bg-[#FFF8E7] text-[#C5A059] border border-[#C5A059]' : 'text-gray-400'}`}><span className="w-6 h-6 rounded-full bg-current text-white flex items-center justify-center text-xs">1</span><span className="font-semibold text-xs md:text-sm hidden sm:inline">Informasi Dasar</span></button>
+                <div className="w-4 md:w-8 h-px bg-gray-300 self-center"></div>
+                <button onClick={() => isDirty ? handleSaveAndContinue() : setCurrentStep(2)} disabled={!isEditing && !formData.title} className={`px-3 md:px-4 py-2 rounded-full flex items-center space-x-2 ${currentStep === 2 ? 'bg-[#FFF8E7] text-[#C5A059] border border-[#C5A059]' : 'text-gray-400'}`}><span className="w-6 h-6 rounded-full bg-current text-white flex items-center justify-center text-xs">2</span><span className="font-semibold text-xs md:text-sm hidden sm:inline">Kurikulum</span></button>
+                <div className="w-4 md:w-8 h-px bg-gray-300 self-center"></div>
+                <button onClick={() => isDirty ? handleSaveAndContinue() : setCurrentStep(3)} disabled={!isEditing && !formData.title} className={`px-3 md:px-4 py-2 rounded-full flex items-center space-x-2 ${currentStep === 3 ? 'bg-[#FFF8E7] text-[#C5A059] border border-[#C5A059]' : 'text-gray-400'}`}><span className="w-6 h-6 rounded-full bg-current text-white flex items-center justify-center text-xs">3</span><span className="font-semibold text-xs md:text-sm hidden sm:inline">Enrollment</span></button>
+              </div>
+            </div>
             <div className="flex-1 overflow-y-auto p-8">
               {currentStep === 1 ? (
                 <div className="max-w-2xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
@@ -717,9 +722,9 @@ const CourseManagement: React.FC<CourseManagementProps> = ({ initialCourses, ini
                               <input placeholder="Nama File Lampiran" className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#C5A059] outline-none text-black placeholder:text-gray-400 w-full text-sm" value={tempLesson.attachmentName || ''} onChange={e => setTempLesson(prev => ({...prev, attachmentName: e.target.value}))} disabled={isLoading} />
                               <input placeholder="URL File (Drive, Docs, dll)" className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#C5A059] outline-none text-black placeholder:text-gray-400 w-full text-sm" value={tempLesson.attachmentUrl || ''} onChange={e => setTempLesson(prev => ({...prev, attachmentUrl: e.target.value}))} disabled={isLoading} />
                             </div>
-                            <div className="flex gap-2 justify-end">
-                              <button onClick={handleCancelEditLesson} disabled={isLoading} className="px-3 py-1.5 text-xs text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50 font-semibold">Batal</button>
-                              <button onClick={() => handleSaveLesson(section.id)} disabled={isLoading} className="px-3 py-1.5 text-xs bg-[#C5A059] text-black rounded font-bold hover:bg-[#B08F4A]">{editingLessonId ? 'Update Materi' : 'Simpan Materi'}</button>
+                            <div className="flex flex-col md:flex-row gap-2 justify-end">
+                              <button onClick={handleCancelEditLesson} disabled={isLoading} className="w-full md:w-auto px-3 py-1.5 text-xs text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50 font-semibold">Batal</button>
+                              <button onClick={() => handleSaveLesson(section.id)} disabled={isLoading} className="w-full md:w-auto px-3 py-1.5 text-xs bg-[#C5A059] text-black rounded font-bold hover:bg-[#B08F4A]">{editingLessonId ? 'Update Materi' : 'Simpan Materi'}</button>
                             </div>
                           </div>
                         ) : (
@@ -834,20 +839,20 @@ const CourseManagement: React.FC<CourseManagementProps> = ({ initialCourses, ini
                 </div>
               )}
             </div>
-            <div className="p-6 border-t flex justify-end space-x-3 bg-white rounded-b-xl">
-              {currentStep > 1 && <button onClick={() => setCurrentStep(prev => prev - 1)} disabled={isLoading} className="px-6 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-semibold">Kembali</button>}
+            <div className="p-6 border-t flex flex-col-reverse md:flex-row md:justify-end md:space-x-3 gap-3 md:gap-0 bg-white rounded-b-xl">
+              {currentStep > 1 && <button onClick={() => setCurrentStep(prev => prev - 1)} disabled={isLoading} className="w-full md:w-auto px-6 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-semibold">Kembali</button>}
               
               {currentStep < 3 ? (
                 isDirty ? (
-                  <button onClick={handleSaveAndContinue} disabled={isLoading} className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold flex items-center shadow-md">
+                  <button onClick={handleSaveAndContinue} disabled={isLoading} className="w-full md:w-auto px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold flex items-center justify-center shadow-md">
                     {isLoading ? <Loader2 size={18} className="mr-2 animate-spin" /> : <Save size={18} className="mr-2" />}
                     {isLoading ? 'Menyimpan...' : 'Simpan & Lanjut'}
                   </button>
                 ) : (
-                  <button onClick={() => setCurrentStep(prev => prev + 1)} disabled={isLoading} className="px-6 py-2.5 bg-[#C5A059] text-black rounded-lg hover:bg-[#B08F4A] font-bold">Lanjut</button>
+                  <button onClick={() => setCurrentStep(prev => prev + 1)} disabled={isLoading} className="w-full md:w-auto px-6 py-2.5 bg-[#C5A059] text-black rounded-lg hover:bg-[#B08F4A] font-bold">Lanjut</button>
                 )
               ) : (
-                <button onClick={handleSaveCourse} disabled={isLoading || (!isDirty && isEditing)} className="px-6 py-2.5 bg-[#C5A059] text-black rounded-lg hover:bg-[#B08F4A] font-bold flex items-center disabled:opacity-50 disabled:cursor-not-allowed">
+                <button onClick={handleSaveCourse} disabled={isLoading || (!isDirty && isEditing)} className="w-full md:w-auto px-6 py-2.5 bg-[#C5A059] text-black rounded-lg hover:bg-[#B08F4A] font-bold flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed">
                   {isLoading ? <Loader2 size={18} className="mr-2 animate-spin" /> : <Save size={18} className="mr-2" />} 
                   {isLoading ? 'Menyimpan...' : 'Simpan Kursus'}
                 </button>

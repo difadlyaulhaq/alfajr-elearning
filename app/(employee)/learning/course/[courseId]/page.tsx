@@ -87,7 +87,7 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ c
                     );
                 })()}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
-                <div className="absolute bottom-0 left-0 p-8">
+                <div className="absolute bottom-0 left-0 p-4 md:p-8">
                     <span className="bg-[#C5A059] text-black text-xs font-bold px-2 py-1 rounded mb-2 inline-block">
                         {course.categoryName}
                     </span>
@@ -101,7 +101,7 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ c
             </div>
 
             {/* Content */}
-            <div className="p-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="p-4 md:p-8 grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-8">
                 {/* Main Content */}
                 <div className="lg:col-span-2">
                     {firstLessonId && (
