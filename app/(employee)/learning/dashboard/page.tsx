@@ -80,20 +80,20 @@ const EmployeeDashboardPage = () => {
             backgroundSize: '40px 40px'
           }}></div>
         </div>
-        <div className="relative px-8 py-12">
+        <div className="relative p-4 md:px-8 md:py-12">
            <div className="flex items-center gap-3 mb-3">
               <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-brand-gold to-yellow-700 flex items-center justify-center shadow-lg border-2 border-white/20">
                 <Sparkles className="text-white" size={28} />
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-white">Assalamualaikum, {user?.name}!</h1>
+                <h1 className="text-2xl md:text-3xl font-bold text-white">Assalamualaikum, {user?.name}!</h1>
                 <p className="text-brand-gold mt-1">Terus tingkatkan potensimu hari ini 🌟</p>
               </div>
             </div>
         </div>
       </div>
 
-      <div className="p-8 -mt-6">
+      <div className="p-4 md:p-8 -mt-6">
         {/* Main Area */}
         <div className="space-y-8">
             {/* Ongoing Courses */}

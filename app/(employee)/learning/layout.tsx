@@ -1,7 +1,8 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Sidebar from '@/components/learning/Sidebar';
+import MobileHeader from '@/components/learning/MobileHeader';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import dynamic from 'next/dynamic';
@@ -13,6 +14,7 @@ const ScreenProtection = dynamic(
 
 function LayoutContent({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
   return (
     <ScreenProtection
@@ -25,11 +27,14 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
       showWarningOnAttempt={true}
     >
       <div className="flex h-screen bg-brand-gray">
-        <Sidebar />
-        <main className="flex-1 overflow-y-auto">
-          <Toaster position="top-right" />
-          {children}
-        </main>
+        <Sidebar isOpen={isMobileMenuOpen} onClose={() => setIsMobileMenuOpen(false)} />
+        <div className="flex-1 w-full flex flex-col">
+          <MobileHeader onMenuClick={() => setIsMobileMenuOpen(true)} />
+          <main className="flex-1 overflow-y-auto">
+            <Toaster position="top-right" />
+            {children}
+          </main>
+        </div>
       </div>
     </ScreenProtection>
   );

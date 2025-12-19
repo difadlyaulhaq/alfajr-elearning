@@ -2,9 +2,14 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Home, Users, FolderTree, BookOpen, BarChart3, LogOut, ChevronDown, ChevronRight, Loader, MonitorPlay, Sparkles, Menu, X } from 'lucide-react';
+import { Home, Users, FolderTree, BookOpen, BarChart3, LogOut, ChevronDown, ChevronRight, Loader, MonitorPlay, Sparkles } from 'lucide-react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
+
+interface AdminSidebarProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
 
 interface MenuItem {
   key: string;
@@ -22,12 +27,11 @@ interface SubMenuItem {
   path: string;
 }
 
-const AdminSidebar = () => {
+const AdminSidebar = ({ isOpen, onClose }: AdminSidebarProps) => {
   const router = useRouter();
   const pathname = usePathname();
   const { logout, isLoading: isLoggingOut } = useAuth();
   const [expandedMenus, setExpandedMenus] = useState<Record<string, boolean>>({});
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const toggleSubmenu = (key: string) => {
     setExpandedMenus(prev => ({
@@ -48,7 +52,7 @@ const AdminSidebar = () => {
   const handleNavigation = (path?: string) => {
     if (path) {
       router.push(path);
-      setIsMobileMenuOpen(false); // Close mobile menu after navigation
+      onClose(); // Close mobile menu after navigation
     }
   };
 
@@ -227,26 +231,18 @@ const AdminSidebar = () => {
 
   return (
     <>
-      {/* Mobile Menu Button */}
-      <button
-        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-        className="md:hidden fixed top-4 left-4 z-50 p-2 bg-black text-white rounded-lg shadow-lg"
-      >
-        {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-      </button>
-
       {/* Mobile Sidebar Overlay */}
-      {isMobileMenuOpen && (
+      {isOpen && (
         <div 
           className="md:hidden fixed inset-0 bg-black/50 z-40"
-          onClick={() => setIsMobileMenuOpen(false)}
+          onClick={onClose}
         />
       )}
 
       {/* Sidebar - Mobile Drawer / Desktop Fixed */}
       <div className={`
-        fixed top-0 left-0 h-screen bg-gradient-to-b from-black via-gray-900 to-black text-white flex flex-col shadow-2xl z-40 transition-transform duration-300 ease-in-out
-        ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
+        fixed top-0 left-0 h-screen bg-gradient-to-b from-black via-gray-900 to-black text-white flex flex-col shadow-2xl z-50 transition-transform duration-300 ease-in-out
+        ${isOpen ? 'translate-x-0' : '-translate-x-full'}
         md:translate-x-0 md:w-64 w-64
       `}>
         <SidebarContent />

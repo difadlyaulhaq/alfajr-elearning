@@ -43,8 +43,8 @@ const DivisionModal = ({ isOpen, onClose, onSubmit, formData, setFormData, isSub
   ];
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl w-full max-w-2xl shadow-2xl transform transition-all max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 md:p-4">
+      <div className="bg-white rounded-none md:rounded-xl w-full h-full md:h-auto md:max-w-2xl shadow-2xl transform transition-all flex flex-col">
         <div className="flex items-center justify-between p-6 border-b border-gray-100 sticky top-0 bg-white z-10">
           <h2 className="text-xl font-bold text-black">
             {isEditing ? 'Edit Divisi' : 'Tambah Divisi Baru'}
@@ -57,7 +57,7 @@ const DivisionModal = ({ isOpen, onClose, onSubmit, formData, setFormData, isSub
           </button>
         </div>
 
-        <form onSubmit={onSubmit} className="p-6 space-y-5">
+        <form onSubmit={onSubmit} className="p-6 space-y-5 overflow-y-auto flex-1">
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">Nama Divisi *</label>
             <input
@@ -93,7 +93,7 @@ const DivisionModal = ({ isOpen, onClose, onSubmit, formData, setFormData, isSub
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">Icon Divisi</label>
               <div className="relative">
@@ -157,19 +157,19 @@ const DivisionModal = ({ isOpen, onClose, onSubmit, formData, setFormData, isSub
             </div>
           </div>
 
-          <div className="flex space-x-3 pt-4 border-t border-gray-100">
+          <div className="flex flex-col-reverse md:flex-row md:space-x-3 gap-3 md:gap-0 pt-4 border-t border-gray-100">
             <button
               type="button"
               onClick={onClose}
               disabled={isSubmitting}
-              className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-semibold transition-colors disabled:opacity-50"
+              className="w-full md:flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-semibold transition-colors disabled:opacity-50"
             >
               Batal
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="flex-1 px-4 py-2.5 bg-[#C5A059] text-black rounded-lg hover:bg-[#B08F4A] font-semibold flex justify-center items-center transition-all shadow-md hover:shadow-lg disabled:opacity-70 disabled:cursor-not-allowed"
+              className="w-full md:flex-1 px-4 py-2.5 bg-[#C5A059] text-black rounded-lg hover:bg-[#B08F4A] font-semibold flex justify-center items-center transition-all shadow-md hover:shadow-lg disabled:opacity-70 disabled:cursor-not-allowed"
             >
               {isSubmitting ? (
                 <>
@@ -397,15 +397,15 @@ const DivisionManagement = () => {
   return (
     <div className="min-h-screen bg-[#F8F9FA]">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-8 py-6">
+      <div className="bg-white border-b border-gray-200 p-4 md:px-8 md:py-6 hidden md:flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-black">Manajemen Divisi</h1>
+            <h1 className="text-xl md:text-2xl font-bold text-black">Manajemen Divisi</h1>
             <p className="text-gray-600 mt-1">Kelola struktur organisasi perusahaan</p>
           </div>
           <button
             onClick={handleAddClick}
-            className="flex items-center space-x-2 bg-[#C5A059] text-black px-5 py-2.5 rounded-lg hover:bg-[#B08F4A] transition-colors font-semibold shadow-md hover:shadow-lg"
+            className="w-full md:w-auto flex items-center justify-center space-x-2 bg-[#C5A059] text-black px-5 py-2.5 rounded-lg hover:bg-[#B08F4A] transition-colors font-semibold shadow-md hover:shadow-lg"
           >
             <Plus size={20} />
             <span>Buat Divisi</span>

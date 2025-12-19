@@ -121,9 +121,9 @@ const CourseCatalogPage = () => {
   }, [courses, activeCategory, searchTerm]);
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA] pt-16 md:pt-0">
+    <div className="min-h-screen bg-[#F8F9FA]">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 p-4 md:px-8 md:py-6">
+      <div className="bg-white border-b border-gray-200 p-4 md:px-8 md:py-6 hidden md:block">
         <h1 className="text-xl md:text-2xl font-bold text-black">Katalog Materi</h1>
         <p className="text-gray-600 mt-1">Temukan pengetahuan dan keahlian baru untuk menunjang karirmu.</p>
       </div>

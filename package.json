@@ -9,9 +9,12 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@headlessui/react": "^2.2.9",
+    "@heroicons/react": "^2.2.0",
     "@next/eslint-plugin-next": "^16.0.7",
     "@radix-ui/react-dialog": "^1.1.15",
     "@tailwindcss/typography": "^0.5.19",
+    "classnames": "^2.5.1",
     "firebase": "^12.6.0",
     "firebase-admin": "^13.6.0",
     "lucide-react": "^0.555.0",

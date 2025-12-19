@@ -1,17 +1,21 @@
 // components/learning/Sidebar.tsx
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Compass, BookCopy, Award, LogOut, ChevronLeft, Loader2, Sparkles, Menu, X } from 'lucide-react';
+import { LayoutDashboard, Compass, BookCopy, Award, LogOut, ChevronLeft, Loader2, Sparkles } from 'lucide-react';
 import Image from 'next/image';
 import { useAuth } from '@/context/AuthContext';
 
-const Sidebar = () => {
+interface SidebarProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
   const pathname = usePathname();
   const { user, logout, isLoading } = useAuth();
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const menuItems = [
     { name: 'Beranda', icon: LayoutDashboard, href: '/learning/dashboard', color: 'from-[#C5A059] to-[#B08F4A]' },
@@ -25,7 +29,7 @@ const Sidebar = () => {
   };
 
   const handleNavigation = () => {
-    setIsMobileMenuOpen(false);
+    onClose();
   };
 
   const SidebarContent = () => (
@@ -166,26 +170,18 @@ const Sidebar = () => {
 
   return (
     <>
-      {/* Mobile Menu Button */}
-      <button
-        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-        className="md:hidden fixed top-4 left-4 z-50 p-2 bg-black text-white rounded-lg shadow-lg"
-      >
-        {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-      </button>
-
       {/* Mobile Sidebar Overlay */}
-      {isMobileMenuOpen && (
+      {isOpen && (
         <div 
           className="md:hidden fixed inset-0 bg-black/50 z-40"
-          onClick={() => setIsMobileMenuOpen(false)}
+          onClick={onClose}
         />
       )}
 
       {/* Sidebar - Mobile Drawer / Desktop Fixed */}
       <div className={`
-        fixed top-0 left-0 h-screen bg-gradient-to-b from-black via-gray-900 to-black text-gray-100 border-r border-gray-800/30 flex flex-col shadow-2xl z-40 transition-transform duration-300 ease-in-out
-        ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
+        fixed top-0 left-0 h-screen bg-gradient-to-b from-black via-gray-900 to-black text-gray-100 border-r border-gray-800/30 flex flex-col shadow-2xl z-50 transition-transform duration-300 ease-in-out
+        ${isOpen ? 'translate-x-0' : '-translate-x-full'}
         md:translate-x-0 md:w-64 w-64
       `}>
         <SidebarContent />
