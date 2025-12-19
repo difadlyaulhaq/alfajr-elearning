@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Search, Edit, Trash2, UserX, UserCheck, Mail, Building, Loader, X, Eye } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Button from '@/components/shared/Button';
+import { ResponsiveTable } from '@/components/shared/ResponsiveTable';
 
 // Definisikan tipe data User
 interface User {
@@ -37,8 +38,8 @@ const UserFormModal = ({ isOpen, onClose, onSubmit, formData, setFormData, isSub
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 transition-opacity">
-      <div className="bg-white rounded-xl w-full max-w-lg shadow-2xl transform transition-all">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 md:p-4 transition-opacity">
+      <div className="bg-white rounded-none md:rounded-xl w-full h-full md:h-auto md:max-w-lg shadow-2xl transform transition-all flex flex-col">
         {/* Modal Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-100">
           <h2 className="text-xl font-bold text-black">
@@ -53,7 +54,7 @@ const UserFormModal = ({ isOpen, onClose, onSubmit, formData, setFormData, isSub
         </div>
 
         {/* Modal Body */}
-        <form onSubmit={onSubmit} className="p-6 space-y-4">
+        <form onSubmit={onSubmit} className="p-6 space-y-4 overflow-y-auto flex-1">
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1.5">Nama Lengkap</label>
             <input
@@ -82,7 +83,7 @@ const UserFormModal = ({ isOpen, onClose, onSubmit, formData, setFormData, isSub
             {isEditing && <p className="text-xs text-gray-500 mt-1">Email tidak dapat diubah untuk menjaga integritas data.</p>}
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1.5">Divisi</label>
               <select 
@@ -135,11 +136,11 @@ const UserFormModal = ({ isOpen, onClose, onSubmit, formData, setFormData, isSub
             />
           </div>
 
-          <div className="flex space-x-3 pt-4 mt-2 border-t border-gray-100">
+          <div className="flex flex-col-reverse md:flex-row md:space-x-3 gap-3 md:gap-0 pt-4 mt-2 border-t border-gray-100">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-semibold transition-colors"
+              className="w-full md:flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-semibold transition-colors"
               disabled={isSubmitting}
             >
               Batal
@@ -147,7 +148,7 @@ const UserFormModal = ({ isOpen, onClose, onSubmit, formData, setFormData, isSub
             <button
               type="submit"
               disabled={isSubmitting || divisions.length === 0}
-              className="flex-1 px-4 py-2.5 bg-[#C5A059] text-black rounded-lg hover:bg-[#B08F4A] font-semibold flex justify-center items-center transition-all shadow-md hover:shadow-lg disabled:opacity-70 disabled:cursor-not-allowed"
+              className="w-full md:flex-1 px-4 py-2.5 bg-[#C5A059] text-black rounded-lg hover:bg-[#B08F4A] font-semibold flex justify-center items-center transition-all shadow-md hover:shadow-lg disabled:opacity-70 disabled:cursor-not-allowed"
             >
               {isSubmitting ? (
                 <>
@@ -450,16 +451,17 @@ const UserManagement = () => {
   return (
     <div className="min-h-screen bg-brand-gray">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-8 py-6 sticky top-0 z-10">
-        <div className="flex items-center justify-between">
+      <div className="bg-white border-b border-gray-200 p-4 md:px-8 md:py-6 sticky top-0 z-10">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-black">Manajemen Pengguna</h1>
+            <h1 className="text-xl md:text-2xl font-bold text-black">Manajemen Pengguna</h1>
             <p className="text-gray-600 mt-1">Kelola data pegawai dan akses sistem</p>
           </div>
           <Button
             variant="primary"
             icon={Plus}
             onClick={handleAddClick}
+            className="w-full md:w-auto"
           >
             Tambah Pegawai
           </Button>
@@ -467,7 +469,7 @@ const UserManagement = () => {
       </div>
 
       {/* Filters */}
-      <div className="p-8">
+      <div className="p-4 md:p-8">
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="relative">
@@ -495,126 +497,122 @@ const UserManagement = () => {
           </div>
         </div>
 
+
         {/* User Table */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
+        <ResponsiveTable className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          <table className="w-full">
+            <thead className="bg-gray-50 border-b border-gray-200">
+              <tr>
+                <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Nama Pegawai</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Kontak</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Divisi</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Aksi</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {isLoading ? (
+                // ... (Loading state tetap sama)
+                <tr><td colSpan={5} className="px-6 py-12 text-center text-gray-500">
+                  <div className="flex flex-col justify-center items-center">
+                    <Loader className="animate-spin mb-2 text-[#C5A059]" size={32} />
+                    <span className="text-sm">Memuat data...</span>
+                  </div>
+                </td></tr>
+              ) : filteredUsers.length === 0 ? (
+                // ... (Empty state tetap sama)
                 <tr>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Nama Pegawai</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Kontak</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Divisi</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Aksi</th>
+                  <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
+                    <p>Tidak ada data pegawai yang ditemukan.</p>
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-  {isLoading ? (
-    // ... (Loading state tetap sama)
-    <tr><td colSpan={5} className="px-6 py-12 text-center text-gray-500">
-                      <div className="flex flex-col justify-center items-center">
-                        <Loader className="animate-spin mb-2 text-[#C5A059]" size={32} /> 
-                        <span className="text-sm">Memuat data...</span>
+              ) : (
+                filteredUsers.map((user) => (
+                  <tr key={user.id} className="hover:bg-gray-50 transition-colors group">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-gradient-to-br from-brand-gold to-yellow-600 rounded-full flex items-center justify-center text-white font-bold shadow-md">
+                          {user.name.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <p className="font-bold text-gray-900">{user.name}</p>
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wide font-bold border ${user.role === 'admin'
+                              ? 'bg-purple-100 text-purple-700 border-purple-200'
+                              : 'bg-gray-100 text-gray-600 border-gray-200'
+                            }`}>
+                            {user.role}
+                          </span>
+                        </div>
                       </div>
-                    </td></tr>
-  ) : filteredUsers.length === 0 ? (
-    // ... (Empty state tetap sama)
-    <tr>
-                    <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
-                      <p>Tidak ada data pegawai yang ditemukan.</p>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex flex-col space-y-1">
+                        <div className="flex items-center space-x-2 text-gray-700">
+                          <Mail size={14} className="text-brand-gold" />
+                          <span className="text-sm font-medium">{user.email}</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center space-x-2 text-gray-600 bg-gray-50 px-3 py-1 rounded-lg w-fit border border-gray-100">
+                        <Building size={14} className="text-gray-400" />
+                        <span className="text-sm font-semibold">{user.division}</span>
+                      </div>
+                    </td>
+
+                    {/* --- KOLOM STATUS (DIPERBAIKI WARNANYA) --- */}
+                    <td className="px-6 py-4">
+                      <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${user.status === 'active'
+                          ? 'bg-green-50 text-green-700 border-green-200'
+                          : 'bg-red-50 text-red-700 border-red-200'
+                        }`}>
+                        <span className={`w-2 h-2 rounded-full ${user.status === 'active' ? 'bg-green-500' : 'bg-red-500'}`}></span>
+                        {user.status === 'active' ? 'Aktif' : 'Non-aktif'}
+                      </span>
+                    </td>
+
+                    {/* --- KOLOM AKSI (DIPERBAIKI TOMBOLNYA) --- */}
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2 opacity-100"> {/* Opacity 100 agar selalu terlihat di mobile/tablet */}
+
+                        {/* Tombol Edit */}
+                        <button
+                          onClick={() => handleEditClick(user)}
+                          className="group flex items-center justify-center w-8 h-8 rounded-lg border border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white hover:shadow-md transition-all duration-200"
+                          title="Edit Data"
+                        >
+                          <Edit size={16} />
+                        </button>
+
+                        {/* Tombol Reset Akses / Toggle Status */}
+                        <button
+                          onClick={() => handleToggleStatus(user.id, user.status)}
+                          className={`group flex items-center justify-center w-8 h-8 rounded-lg border transition-all duration-200 hover:text-white hover:shadow-md ${user.status === 'active'
+                              ? 'border-orange-200 bg-orange-50 text-orange-600 hover:bg-orange-500'
+                              : 'border-green-200 bg-green-50 text-green-600 hover:bg-green-600'
+                            }`}
+                          title={user.status === 'active' ? "Non-aktifkan (Blokir Akses)" : "Aktifkan Kembali"}
+                        >
+                          {user.status === 'active' ? <UserX size={16} /> : <UserCheck size={16} />}
+                        </button>
+
+                        {/* Tombol Delete */}
+                        <button
+                          onClick={() => handleDeleteUser(user.id, user.name)}
+                          className="group flex items-center justify-center w-8 h-8 rounded-lg border border-red-200 bg-red-50 text-red-600 hover:bg-red-600 hover:text-white hover:shadow-md transition-all duration-200"
+                          title="Hapus User"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+
+                      </div>
                     </td>
                   </tr>
-  ) : (
-    filteredUsers.map((user) => (
-      <tr key={user.id} className="hover:bg-gray-50 transition-colors group">
-        <td className="px-6 py-4">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-brand-gold to-yellow-600 rounded-full flex items-center justify-center text-white font-bold shadow-md">
-              {user.name.charAt(0).toUpperCase()}
-            </div>
-            <div>
-              <p className="font-bold text-gray-900">{user.name}</p>
-              <span className={`text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wide font-bold border ${
-                user.role === 'admin' 
-                  ? 'bg-purple-100 text-purple-700 border-purple-200' 
-                  : 'bg-gray-100 text-gray-600 border-gray-200'
-              }`}>
-                {user.role}
-              </span>
-            </div>
-          </div>
-        </td>
-        <td className="px-6 py-4">
-          <div className="flex flex-col space-y-1">
-            <div className="flex items-center space-x-2 text-gray-700">
-              <Mail size={14} className="text-brand-gold" />
-              <span className="text-sm font-medium">{user.email}</span>
-            </div>
-          </div>
-        </td>
-        <td className="px-6 py-4">
-          <div className="flex items-center space-x-2 text-gray-600 bg-gray-50 px-3 py-1 rounded-lg w-fit border border-gray-100">
-            <Building size={14} className="text-gray-400" />
-            <span className="text-sm font-semibold">{user.division}</span>
-          </div>
-        </td>
-        
-        {/* --- KOLOM STATUS (DIPERBAIKI WARNANYA) --- */}
-        <td className="px-6 py-4">
-          <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${
-            user.status === 'active' 
-              ? 'bg-green-50 text-green-700 border-green-200' 
-              : 'bg-red-50 text-red-700 border-red-200'
-          }`}>
-            <span className={`w-2 h-2 rounded-full ${user.status === 'active' ? 'bg-green-500' : 'bg-red-500'}`}></span>
-            {user.status === 'active' ? 'Aktif' : 'Non-aktif'}
-          </span>
-        </td>
-
-        {/* --- KOLOM AKSI (DIPERBAIKI TOMBOLNYA) --- */}
-        <td className="px-6 py-4">
-          <div className="flex items-center gap-2 opacity-100"> {/* Opacity 100 agar selalu terlihat di mobile/tablet */}
-            
-            {/* Tombol Edit */}
-            <button 
-              onClick={() => handleEditClick(user)}
-              className="group flex items-center justify-center w-8 h-8 rounded-lg border border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white hover:shadow-md transition-all duration-200" 
-              title="Edit Data"
-            >
-              <Edit size={16} />
-            </button>
-
-            {/* Tombol Reset Akses / Toggle Status */}
-            <button 
-              onClick={() => handleToggleStatus(user.id, user.status)}
-              className={`group flex items-center justify-center w-8 h-8 rounded-lg border transition-all duration-200 hover:text-white hover:shadow-md ${
-                user.status === 'active' 
-                  ? 'border-orange-200 bg-orange-50 text-orange-600 hover:bg-orange-500' 
-                  : 'border-green-200 bg-green-50 text-green-600 hover:bg-green-600'
-              }`}
-              title={user.status === 'active' ? "Non-aktifkan (Blokir Akses)" : "Aktifkan Kembali"}
-            >
-              {user.status === 'active' ? <UserX size={16} /> : <UserCheck size={16} />}
-            </button>
-            
-            {/* Tombol Delete */}
-            <button 
-              onClick={() => handleDeleteUser(user.id, user.name)}
-              className="group flex items-center justify-center w-8 h-8 rounded-lg border border-red-200 bg-red-50 text-red-600 hover:bg-red-600 hover:text-white hover:shadow-md transition-all duration-200" 
-              title="Hapus User"
-            >
-              <Trash2 size={16} />
-            </button>
-
-          </div>
-        </td>
-      </tr>
-    ))
-  )}
-</tbody>
-            </table>
-          </div>
-        </div>
+                ))
+              )}
+            </tbody>
+          </table>
+        </ResponsiveTable>
       </div>
 
       {/* Render Modal */}

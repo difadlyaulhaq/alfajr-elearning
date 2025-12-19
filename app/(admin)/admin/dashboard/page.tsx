@@ -65,16 +65,16 @@ const AdminDashboard = async () => {
   return (
     <div className="min-h-screen bg-[#F8F9FA]">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-8 py-6">
+      <div className="bg-white border-b border-gray-200 p-4 md:px-8 md:py-6">
         <div>
-          <h1 className="text-2xl font-bold text-black">Dashboard Admin</h1>
+          <h1 className="text-xl md:text-2xl font-bold text-black">Dashboard Admin</h1>
           <p className="text-gray-600 mt-1">Ringkasan aktivitas sistem pembelajaran</p>
         </div>
       </div>
 
       {/* Stats Cards */}
-      <div className="p-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="p-4 md:p-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
           {stats.map((stat) => (
             <Link href={stat.href} key={stat.title}>
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 h-full hover:shadow-md hover:border-gray-300 transition-all">
@@ -93,7 +93,7 @@ const AdminDashboard = async () => {
         </div>
 
         {/* Recent Activities & Quick Actions */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mb-8">
            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <h3 className="text-lg font-bold text-black mb-4">Aktivitas Terbaru</h3>
             <div className="space-y-4">

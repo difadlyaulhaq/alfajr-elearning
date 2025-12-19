@@ -121,14 +121,14 @@ const CourseCatalogPage = () => {
   }, [courses, activeCategory, searchTerm]);
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA]">
+    <div className="min-h-screen bg-[#F8F9FA] pt-16 md:pt-0">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-8 py-6">
-        <h1 className="text-2xl font-bold text-black">Katalog Materi</h1>
+      <div className="bg-white border-b border-gray-200 p-4 md:px-8 md:py-6">
+        <h1 className="text-xl md:text-2xl font-bold text-black">Katalog Materi</h1>
         <p className="text-gray-600 mt-1">Temukan pengetahuan dan keahlian baru untuk menunjang karirmu.</p>
       </div>
 
-      <div className="p-8">
+      <div className="p-4 md:p-8">
         {/* Filter and Search */}
         <div className="mb-8">
             <div className="relative mb-4 max-w-md">
@@ -171,7 +171,7 @@ const CourseCatalogPage = () => {
           </div>
         ) : (
             filteredCourses.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
                 {filteredCourses.map((course) => (
                     <CourseCard key={course.id} course={course} progress={progress[course.id]} />
                 ))}
