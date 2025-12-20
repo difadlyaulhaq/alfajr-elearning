@@ -1,7 +1,7 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Search, Edit, Trash2, Loader, X, FolderOpen, ChevronDown } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Loader, X, FolderOpen, ChevronDown, Filter } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 interface Category {
@@ -180,6 +180,8 @@ const CategoryManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [filterStatus, setFilterStatus] = useState('all'); // 'all', 'active', 'inactive'
 
   const initialFormState = {
     name: '',
@@ -189,6 +191,20 @@ const CategoryManagement = () => {
   };
 
   const [formData, setFormData] = useState(initialFormState);
+
+  // Ref for closing filter dropdown when clicking outside
+  const filterRef = useRef<HTMLDivElement>(null);
+
+  // useEffect to handle click outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (filterRef.current && !filterRef.current.contains(event.target as Node)) {
+        setIsFilterOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   useEffect(() => {
     fetchCategories();
@@ -372,30 +388,132 @@ const CategoryManagement = () => {
     showConfirmationToast(confirmMessage, performDelete);
   };
 
-  const filteredCategories = categories.filter(cat =>
-    cat.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredCategories = categories.filter(cat => {
+    const matchesSearch = cat.name.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = filterStatus === 'all' || cat.status === filterStatus;
+    return matchesSearch && matchesStatus;
+  });
 
   return (
     <div className="min-h-screen bg-[#F8F9FA]">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 p-4 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-black">Manajemen Kategori</h1>
-          <p className="text-gray-600 mt-1 text-sm sm:text-base">Kelompokkan kursus berdasarkan topik</p>
+      {/* Header Mobile */}
+      <div className="md:hidden bg-white border-b border-gray-200 p-4 sticky top-0 z-10">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <h1 className="text-lg font-bold text-black">Kategori</h1>
+            <p className="text-xs text-gray-600">Kelompokkan kursus</p>
+          </div>
+          <button
+            onClick={handleAddClick}
+            className="flex items-center gap-2 bg-[#C5A059] text-black px-3 py-2 rounded-lg hover:bg-[#B08F4A] transition-colors font-semibold shadow-md hover:shadow-lg text-sm"
+          >
+            <Plus size={16} />
+            <span>Tambah</span>
+          </button>
         </div>
-        <button
-          onClick={handleAddClick}
-          className="w-full sm:w-auto flex items-center justify-center space-x-2 bg-[#C5A059] text-black px-4 sm:px-5 py-2.5 rounded-lg hover:bg-[#B08F4A] transition-colors font-semibold shadow-md hover:shadow-lg text-sm sm:text-base"
-        >
-          <Plus size={18} />
-          <span>Buat Kategori</span>
-        </button>
+        
+        {/* Mobile Search & Filter Row */}
+        <div className="flex gap-2">
+          {/* Mobile Search Bar - Small */}
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-2.5 text-gray-400" size={16} />
+            <input
+              type="text"
+              placeholder="Cari kategori..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full text-black pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none"
+            />
+          </div>
+          
+          {/* Mobile Filter Dropdown */}
+          <div className="relative" ref={filterRef}>
+            <button
+              onClick={() => setIsFilterOpen(!isFilterOpen)}
+              className="flex items-center gap-1 px-3 py-2 border border-gray-300 text-gray-700 rounded-lg bg-white hover:bg-gray-50 text-sm font-medium"
+            >
+              <Filter size={16} />
+            </button>
+            
+            {/* Dropdown Menu */}
+            {isFilterOpen && (
+              <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 z-20">
+                <div className="p-3 border-b border-gray-200">
+                  <h3 className="text-sm font-semibold text-gray-800">Filter Status</h3>
+                </div>
+                <div className="max-h-60 overflow-y-auto">
+                  <button
+                    onClick={() => {
+                      setFilterStatus('all');
+                      setIsFilterOpen(false);
+                    }}
+                    className={`w-full text-left px-4 py-2.5 text-sm ${filterStatus === 'all' ? 'bg-[#C5A059]/10 text-[#C5A059] font-medium' : 'text-gray-700 hover:bg-gray-50'}`}
+                  >
+                    Semua Status
+                  </button>
+                  <button
+                    onClick={() => {
+                      setFilterStatus('active');
+                      setIsFilterOpen(false);
+                    }}
+                    className={`w-full text-left px-4 py-2.5 text-sm ${filterStatus === 'active' ? 'bg-[#C5A059]/10 text-[#C5A059] font-medium' : 'text-gray-700 hover:bg-gray-50'}`}
+                  >
+                    Aktif
+                  </button>
+                  <button
+                    onClick={() => {
+                      setFilterStatus('inactive');
+                      setIsFilterOpen(false);
+                    }}
+                    className={`w-full text-left px-4 py-2.5 text-sm ${filterStatus === 'inactive' ? 'bg-[#C5A059]/10 text-[#C5A059] font-medium' : 'text-gray-700 hover:bg-gray-50'}`}
+                  >
+                    Nonaktif
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+        
+        {/* Active Filter Indicator */}
+        {filterStatus !== 'all' && (
+          <div className="mt-2 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-600">Filter aktif:</span>
+              <span className="text-xs font-medium bg-[#C5A059]/10 text-[#C5A059] px-2 py-1 rounded">
+                {filterStatus === 'active' ? 'Aktif' : 'Nonaktif'}
+              </span>
+            </div>
+            <button 
+              onClick={() => setFilterStatus('all')}
+              className="text-xs text-red-500 hover:text-red-700"
+            >
+              Hapus filter
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Header Desktop */}
+      <div className="hidden md:block bg-white border-b border-gray-200 p-4 md:px-8 md:py-6">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-xl md:text-2xl font-bold text-black">Manajemen Kategori</h1>
+            <p className="text-gray-600 mt-1 text-sm sm:text-base">Kelompokkan kursus berdasarkan topik</p>
+          </div>
+          <button
+            onClick={handleAddClick}
+            className="w-full md:w-auto flex items-center justify-center space-x-2 bg-[#C5A059] text-black px-4 sm:px-5 py-2.5 rounded-lg hover:bg-[#B08F4A] transition-colors font-semibold shadow-md hover:shadow-lg text-sm sm:text-base"
+          >
+            <Plus size={18} />
+            <span>Buat Kategori</span>
+          </button>
+        </div>
       </div>
 
       <div className="p-3 sm:p-4 md:p-6 lg:p-8">
-        {/* Search */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-4 md:p-6 mb-4 sm:mb-6">
+        {/* Desktop Search */}
+        <div className="hidden md:block bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-4 md:p-6 mb-4 sm:mb-6">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
             <input
@@ -417,11 +535,14 @@ const CategoryManagement = () => {
           <div className="bg-white rounded-lg p-6 sm:p-8 md:p-12 text-center">
             <FolderOpen className="mx-auto text-gray-300 mb-4 w-12 h-12 sm:w-16 sm:h-16" />
             <p className="text-gray-500 text-base sm:text-lg">
-              {searchTerm ? 'Kategori tidak ditemukan' : 'Belum ada kategori dibuat'}
+              {searchTerm || filterStatus !== 'all' ? 'Kategori tidak ditemukan' : 'Belum ada kategori dibuat'}
             </p>
-            {searchTerm && (
+            {(searchTerm || filterStatus !== 'all') && (
               <button
-                onClick={() => setSearchTerm('')}
+                onClick={() => {
+                  setSearchTerm('');
+                  setFilterStatus('all');
+                }}
                 className="mt-4 text-[#C5A059] hover:text-[#B08F4A] font-medium text-sm sm:text-base"
               >
                 Reset pencarian
@@ -429,56 +550,65 @@ const CategoryManagement = () => {
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-3 sm:gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredCategories.map((category) => (
               <div
                 key={category.id}
                 className="bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-all overflow-hidden"
               >
-                <div className="flex flex-col sm:flex-row">
-                  {/* Icon Section */}
-                  <div
-                    className="w-full sm:w-32 h-20 sm:h-32 flex items-center justify-center text-4xl sm:text-5xl flex-shrink-0"
-                    style={{ backgroundColor: `${category.color}15` }}
-                  >
-                    {category.icon}
+                {/* Icon Section - Atas untuk semua ukuran */}
+                <div
+                  className="w-full h-32 flex items-center justify-center text-5xl"
+                  style={{ backgroundColor: `${category.color}15` }}
+                >
+                  {category.icon}
+                </div>
+                
+                {/* Content Section */}
+                <div className="p-5">
+                  {/* Header with Title and Actions */}
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1">
+                      <h3 className="text-lg font-bold text-black mb-1 line-clamp-1">{category.name}</h3>
+                      <p className="text-sm text-gray-600 line-clamp-2">
+                        {category.description || 'Tidak ada deskripsi'}
+                      </p>
+                    </div>
+                    <div className="flex space-x-2 ml-2">
+                      <button
+                        onClick={() => handleEditClick(category)}
+                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        title="Edit"
+                      >
+                        <Edit size={16} />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(category.id, category.name)}
+                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        title="Hapus"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
                   </div>
                   
-                  {/* Content Section */}
-                  <div className="flex-1 p-4 sm:p-6">
-                    <div className="flex flex-col sm:flex-row sm:items-start justify-between mb-3 sm:mb-4">
-                      <div className="flex-1">
-                        <h3 className="text-base sm:text-lg font-bold text-black mb-1">{category.name}</h3>
-                        <p className="text-xs sm:text-sm text-gray-600 line-clamp-2">
-                          {category.description || 'Tidak ada deskripsi'}
-                        </p>
-                      </div>
-                      <div className="flex justify-end sm:justify-normal space-x-2 mt-3 sm:mt-0">
-                        <button
-                          onClick={() => handleEditClick(category)}
-                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                          title="Edit"
-                        >
-                          <Edit size={16} />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(category.id, category.name)}
-                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                          title="Hapus"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center justify-between pt-3 sm:pt-4 border-t border-gray-100">
-                      <span className="text-xs sm:text-sm text-gray-600">
+                  {/* Stats and Status */}
+                  <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+                    <div className="flex items-center">
+                      <div 
+                        className="w-3 h-3 rounded-full mr-2" 
+                        style={{ backgroundColor: category.color }}
+                      />
+                      <span className="text-sm text-gray-600">
                         <span className="font-bold text-black">{category.courseCount}</span> Kursus
                       </span>
-                      <span className={`text-xs px-2 py-1 rounded-full ${category.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
-                        {category.status === 'active' ? 'Aktif' : 'Nonaktif'}
-                      </span>
                     </div>
+                    <span className={`text-xs px-3 py-1 rounded-full font-medium ${category.status === 'active' 
+                      ? 'bg-green-50 text-green-700 border border-green-100' 
+                      : 'bg-gray-50 text-gray-600 border border-gray-100'
+                    }`}>
+                      {category.status === 'active' ? 'Aktif' : 'Nonaktif'}
+                    </span>
                   </div>
                 </div>
               </div>
