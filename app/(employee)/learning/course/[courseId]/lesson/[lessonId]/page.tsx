@@ -1,8 +1,9 @@
 import { notFound } from "next/navigation";
 import { getCoursePageData } from "@/lib/data/courses";
-import LessonPlayer from "@/components/learning/LessonPlayer";
 import { getCurrentUser } from "@/lib/session";
 import { adminDb } from "@/lib/firebase/admin";
+import { LessonPlayerMobile } from "@/components/learning/LessonPlayerMobile";
+import { LessonPlayerDesktop } from "@/components/learning/LessonPlayerDesktop";
 
 export default async function LessonPage({
   params,
@@ -46,12 +47,32 @@ export default async function LessonPage({
   const nextLesson = allLessons[currentLessonIndex + 1] || null;
 
   return (
-    <LessonPlayer
-      course={course}
-      currentLesson={currentLesson}
-      prevLesson={prevLesson}
-      nextLesson={nextLesson}
-      completedLessons={completedLessons}
-    />
+    <>
+      {/* Mobile View */}
+      <div className="md:hidden">
+        <LessonPlayerMobile
+          courseId={courseId}
+          courseTitle={course.title}
+          lesson={currentLesson}
+          prevLesson={prevLesson}
+          nextLesson={nextLesson}
+          completedLessons={completedLessons}
+          isCompleted={completedLessons.includes(currentLesson.id)}
+        />
+      </div>
+
+      {/* Desktop View */}
+      <div className="hidden md:block">
+        <LessonPlayerDesktop
+          courseId={courseId}
+          courseTitle={course.title}
+          lesson={currentLesson}
+          prevLesson={prevLesson}
+          nextLesson={nextLesson}
+          completedLessons={completedLessons}
+          isCompleted={completedLessons.includes(currentLesson.id)}
+        />
+      </div>
+    </>
   );
 }
