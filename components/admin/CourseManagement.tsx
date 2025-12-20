@@ -1,136 +1,274 @@
 'use client';
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Edit, Trash2, Eye, Users, Video, X, Save, BookText, Youtube, Loader2, Link as LinkIcon, ChevronDown, Search, Menu, Grid, Filter } from 'lucide-react';
+import { Plus, Edit, Trash2, Eye, Users, Video, X, Save, BookText, Youtube, Loader2, Link as LinkIcon, ChevronDown, Search, Menu, Grid, Filter, PlayCircle, FileText, ChevronLeft } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { MarkdownRenderer } from '@/components/shared/MarkdownRenderer';
 import RichTextEditor from '@/components/admin/RichTextEditor';
 import { Course, Section, Lesson, Category, User, Division } from '@/types';
+
+// Helper for YouTube ID
+const getYouTubeId = (url: string) => {
+  if (!url) return null;
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+  const match = url.match(regExp);
+  return (match && match[2].length === 11) ? match[2] : null;
+};
 
 // Modal Preview untuk Kursus
 export const CoursePreviewModal: React.FC<{
   previewData: Course;
   onClose: () => void;
 }> = ({ previewData, onClose }) => {
+  const [activeLesson, setActiveLesson] = useState<Lesson | null>(null);
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
+
+  // Initialize expanded sections
+  useEffect(() => {
+    if (previewData.sections) {
+      const initial: Record<string, boolean> = {};
+      previewData.sections.forEach(s => initial[s.id] = true);
+      setExpandedSections(initial);
+    }
+  }, [previewData]);
+
+  const toggleSection = (sectionId: string) => {
+    setExpandedSections(prev => ({...prev, [sectionId]: !prev[sectionId]}));
+  };
+
+  const getYouTubeEmbedUrl = (url: string) => {
+    const id = getYouTubeId(url);
+    return id ? `https://www.youtube.com/embed/${id}` : null;
+  };
+
+  const renderContent = () => {
+    if (!activeLesson) {
+      return (
+        <div className="space-y-6">
+           {/* Course Overview */}
+           <div className="relative aspect-video rounded-xl overflow-hidden bg-gray-100 shadow-md">
+             <img 
+               src={previewData.coverImage || previewData.thumbnail || "/logo-alfajr.png"} 
+               className="w-full h-full object-cover"
+               alt="Cover"
+               onError={(e) => { e.currentTarget.src = "/logo-alfajr.png"; }}
+             />
+             <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                <button 
+                  onClick={() => {
+                    const firstLesson = previewData.sections?.[0]?.lessons?.[0];
+                    if (firstLesson) setActiveLesson(firstLesson);
+                  }}
+                  className="bg-yellow-500 hover:bg-yellow-600 text-white px-6 py-3 rounded-full font-bold flex items-center gap-2 transition-transform hover:scale-105 shadow-lg border border-yellow-500"
+                >
+                  <PlayCircle size={24} />
+                  <span>Mulai Kursus</span>
+                </button>
+             </div>
+           </div>
+           
+           <div className="bg-white p-6 rounded-xl border shadow-sm">
+             <h1 className="text-2xl font-bold text-gray-900">{previewData.title}</h1>
+             <div className="flex items-center gap-3 mt-2">
+                <span className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-bold uppercase tracking-wider">
+                  {previewData.categoryName}
+                </span>
+                <span className="text-gray-500 text-sm font-medium">•</span>
+                <span className="text-gray-500 text-sm font-medium capitalize">{previewData.level}</span>
+             </div>
+             
+             <div className="mt-6">
+                <h3 className="text-lg font-bold mb-3 text-gray-900 border-b pb-2">Deskripsi Kursus</h3>
+                <div className="prose prose-sm md:prose-base max-w-none text-gray-700">
+                  <MarkdownRenderer content={previewData.description || 'Tidak ada deskripsi.'} />
+                </div>
+             </div>
+           </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-6 animate-fadeIn">
+         {/* Video Player */}
+         {activeLesson.contentType === 'youtube' && activeLesson.url && (
+            <div className="aspect-video bg-black rounded-xl overflow-hidden shadow-xl ring-1 ring-gray-900/10">
+               <iframe
+                 src={getYouTubeEmbedUrl(activeLesson.url) || ''}
+                 className="w-full h-full"
+                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                 allowFullScreen
+               />
+            </div>
+         )}
+
+         {/* Header */}
+         <div className="border-b pb-4">
+            <h2 className="text-2xl font-bold text-gray-900">{activeLesson.title}</h2>
+            <p className="text-sm text-gray-500 mt-1 flex items-center gap-2">
+               {activeLesson.contentType === 'youtube' ? <Video size={14}/> : <BookText size={14}/>}
+               <span className="capitalize">{activeLesson.contentType}</span>
+               {activeLesson.duration && <span>• {activeLesson.duration} menit</span>}
+            </p>
+         </div>
+
+         {/* Text Content */}
+         {activeLesson.contentType === 'text' && activeLesson.textContent && (
+           <div className="prose max-w-none p-6 bg-white rounded-xl border border-gray-200 shadow-sm">
+              <MarkdownRenderer content={activeLesson.textContent} />
+           </div>
+         )}
+
+         {/* Attachments */}
+         {activeLesson.attachmentUrl && (
+            <div className="p-4 bg-blue-50 border border-blue-100 rounded-xl flex items-center justify-between hover:bg-blue-100/50 transition-colors">
+               <div className="flex items-center gap-3">
+                  <div className="p-2 bg-blue-100 rounded-lg text-blue-600">
+                    <LinkIcon size={20} />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-gray-900 text-sm">{activeLesson.attachmentName || 'Lampiran Materi'}</p>
+                    <p className="text-xs text-blue-600">Klik tombol di kanan untuk membuka</p>
+                  </div>
+               </div>
+               <a 
+                 href={activeLesson.attachmentUrl} 
+                 target="_blank" 
+                 rel="noopener noreferrer"
+                 className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+               >
+                 Buka Lampiran
+               </a>
+            </div>
+         )}
+      </div>
+    )
+  };
+
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-0 md:p-4">
-      <div className="bg-white w-full h-full md:w-full md:max-w-5xl md:h-[90vh] md:rounded-xl flex flex-col shadow-2xl">
-        <div className="flex items-center justify-between p-4 md:p-6 border-b">
-          <h2 className="text-lg md:text-xl font-bold text-black">
-            Preview: {previewData.title}
-          </h2>
-          <button 
-            onClick={onClose}
-            className="p-2 rounded-full hover:bg-gray-100"
-          >
-            <X size={20} className="text-gray-400 hover:text-red-500" />
-          </button>
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-0 md:p-4">
+      <div className="bg-gray-50 w-full h-full md:rounded-2xl overflow-hidden flex flex-col shadow-2xl max-w-[1600px] border border-white/10">
+        
+        {/* Modal Header */}
+        <div className="h-16 border-b flex items-center justify-between px-4 bg-white shadow-sm z-20 shrink-0">
+             <div className="flex items-center gap-3 min-w-0">
+                <button onClick={onClose} className="md:hidden p-2 -ml-2 text-gray-500">
+                   <ChevronLeft size={24} />
+                </button>
+                <div className="flex flex-col">
+                  <h3 className="font-bold text-lg text-gray-900 truncate">Preview Mode</h3>
+                  <p className="text-xs text-yellow-700 truncate max-w-[200px] md:max-w-md">{previewData.title}</p>
+                </div>
+             </div>
+             <button onClick={onClose} className="p-2 bg-gray-100 hover:bg-red-50 hover:text-red-600 rounded-full transition-colors">
+                <X size={20} />
+             </button>
+        </div>
+
+        {/* Modal Body */}
+        <div className="flex-1 flex overflow-hidden">
+           
+           {/* Main Content Area */}
+           <div className="flex-1 overflow-y-auto p-4 md:p-8 scrollbar-thin scrollbar-thumb-gray-300">
+              <div className="max-w-4xl mx-auto pb-20 md:pb-0">
+                 {renderContent()}
+              </div>
+           </div>
+
+           {/* Sidebar Navigation (Desktop) */}
+           <div className="w-80 bg-white border-l border-gray-200 flex-col hidden md:flex shrink-0">
+              <div className="p-4 border-b bg-gray-50">
+                 <h4 className="font-bold text-gray-900">Materi Kursus</h4>
+                 <div className="flex items-center justify-between mt-1">
+                   <p className="text-xs text-gray-500">
+                      {previewData.sections?.reduce((acc, s) => acc + s.lessons.length, 0)} Pelajaran
+                   </p>
+                   <span className="text-xs text-yellow-700 font-medium">
+                     {Math.round(previewData.sections?.reduce((acc, s) => acc + s.lessons.reduce((d, l) => d + (parseInt(l.duration || '0')), 0), 0) || 0)} Menit Total
+                   </span>
+                 </div>
+              </div>
+              <div className="flex-1 overflow-y-auto p-3 space-y-3 scrollbar-thin">
+                 {previewData.sections?.map((section, idx) => (
+                    <div key={section.id} className="bg-white">
+                       <button 
+                         onClick={() => toggleSection(section.id)}
+                         className="flex items-center justify-between w-full text-left mb-2 group py-1"
+                       >
+                          <span className="font-bold text-xs text-gray-500 uppercase tracking-wider group-hover:text-black transition-colors">
+                             Bagian {idx + 1}: {section.title}
+                          </span>
+                          <ChevronDown 
+                            size={14} 
+                            className={`text-gray-400 transition-transform duration-200 ${expandedSections[section.id] ? 'rotate-180' : ''}`}
+                          />
+                       </button>
+                       
+                       {expandedSections[section.id] && (
+                          <div className="space-y-1">
+                             {section.lessons.map((lesson) => (
+                                <button
+                                  key={lesson.id}
+                                  onClick={() => setActiveLesson(lesson)}
+                                  className={`w-full text-left p-2.5 rounded-lg text-sm flex items-start gap-3 transition-all duration-200 border ${
+                                    activeLesson?.id === lesson.id 
+                                      ? 'bg-yellow-500 text-white border-yellow-500 shadow-md transform scale-[1.02]' 
+                                      : 'bg-gray-50 text-gray-700 border-transparent hover:bg-gray-100 hover:border-gray-200'
+                                  }`}
+                                >
+                                   <div className={`mt-0.5 shrink-0 ${activeLesson?.id === lesson.id ? 'text-white' : 'text-yellow-600'}`}>
+                                      {lesson.contentType === 'youtube' ? <PlayCircle size={16} /> : <FileText size={16} />}
+                                   </div>
+                                   <span className={`line-clamp-2 text-xs md:text-sm ${activeLesson?.id === lesson.id ? 'font-semibold' : ''}`}>
+                                      {lesson.title}
+                                   </span>
+                                </button>
+                             ))}
+                          </div>
+                       )}
+                    </div>
+                 ))}
+              </div>
+           </div>
         </div>
         
-        <div className="flex-1 overflow-y-auto p-4 md:p-8">
-          {/* Cover Image */}
-          {(previewData.thumbnail || previewData.coverImage) && (
-            <img
-              src={previewData.thumbnail || previewData.coverImage || "/logo-alfajr.png"}
-              alt={previewData.title}
-              className="w-full h-40 md:h-60 object-cover rounded-lg mb-4 md:mb-6"
-              onError={(e) => {
-                e.currentTarget.src = "/logo-alfajr.png";
-              }}
-            />
-          )}
-
-          {/* Description */}
-          {previewData.description && (
-            <div className="mb-6 md:mb-8">
-              <h3 className="text-lg md:text-xl font-bold mt-3 md:mt-4 mb-3 md:mb-4 text-black">Deskripsi</h3>
-              <div className="prose prose-sm md:prose-lg max-w-none">
-                <MarkdownRenderer content={previewData.description} />
-              </div>
-            </div>
-          )}
-
-          {/* Curriculum */}
-          {previewData.sections && previewData.sections.length > 0 && (
-            <div className="mt-6 md:mt-8">
-              <h2 className="text-xl md:text-2xl font-bold mb-4 md:mb-6 text-black">Kurikulum</h2>
-              {previewData.sections.map((section: Section, sIndex: number) => (
-                <div key={section.id} className="mb-4 md:mb-6 border-b pb-3 md:pb-4 last:border-b-0">
-                  <h3 className="text-base md:text-lg font-semibold mb-3 md:mb-4 text-black">
-                    Bab {sIndex + 1}: {section.title}
-                  </h3>
-                  {section.lessons && section.lessons.length > 0 ? (
-                    <ul className="space-y-2 md:space-y-3">
-                      {section.lessons.map((lesson: Lesson) => (
-                        <li
+        {/* Mobile Playlist Drawer/List */}
+        <div className="md:hidden border-t bg-white max-h-[40vh] overflow-y-auto shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
+           <div className="sticky top-0 bg-white border-b px-4 py-3 flex items-center justify-between z-10">
+              <h4 className="font-bold text-gray-900 text-sm">Daftar Materi</h4>
+              <span className="text-xs text-gray-500">
+                {previewData.sections?.reduce((acc, s) => acc + s.lessons.length, 0)} Video
+              </span>
+           </div>
+           <div className="p-3 space-y-4">
+             {previewData.sections?.map((section, idx) => (
+                <div key={section.id}>
+                   <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2 ml-1">
+                      Bagian {idx + 1}: {section.title}
+                   </p>
+                   <div className="space-y-1">
+                     {section.lessons.map((lesson) => (
+                        <button
                           key={lesson.id}
-                          className="p-3 md:p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-gray-300 transition-colors"
+                          onClick={() => setActiveLesson(lesson)}
+                          className={`w-full text-left p-3 rounded-lg text-sm flex items-center gap-3 transition-colors ${
+                            activeLesson?.id === lesson.id 
+                              ? 'bg-yellow-500 text-white font-semibold shadow-sm' 
+                              : 'bg-gray-50 border border-gray-100 text-gray-700 active:bg-gray-200'
+                          }`}
                         >
-                          <div className="flex items-center mb-2 md:mb-3">
-                            <div className="w-6 h-6 md:w-8 md:h-8 bg-[#C5A059]/10 text-[#C5A059] flex items-center justify-center rounded mr-2 md:mr-3 shrink-0">
-                              {lesson.contentType === "youtube" ? <Youtube size={14} /> : <BookText size={14} />}
-                            </div>
-                            <p className="font-semibold text-black text-sm md:text-base">
-                              {lesson.title}
-                            </p>
-                          </div>
-                          
-                          {/* Text Content Preview */}
-                          {lesson.contentType === "text" && lesson.textContent && (
-                            <div className="mt-2 pl-8 md:pl-11">
-                              <div className="prose prose-xs md:prose-sm max-w-none text-gray-700 line-clamp-2 md:line-clamp-3">
-                                <MarkdownRenderer
-                                  content={
-                                    lesson.textContent.substring(0, 150) +
-                                    (lesson.textContent.length > 150 ? "..." : "")
-                                  }
-                                />
-                              </div>
-                            </div>
-                          )}
-                          
-                          {/* YouTube Link */}
-                          {lesson.contentType === "youtube" && lesson.url && (
-                            <div className="mt-2 pl-8 md:pl-11">
-                              <a
-                                href={lesson.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center text-blue-600 hover:text-blue-800 text-xs md:text-sm font-medium"
-                              >
-                                <Eye size={12} className="mr-1" />
-                                Tonton Video
-                              </a>
-                            </div>
-                          )}
-
-                          {/* Attachment */}
-                          {lesson.attachmentUrl && lesson.attachmentName && (
-                            <div className="mt-2 pl-8 md:pl-11">
-                              <a
-                                href={lesson.attachmentUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center text-green-600 hover:text-green-800 text-xs md:text-sm font-medium"
-                              >
-                                <LinkIcon size={12} className="mr-1" />
-                                {lesson.attachmentName}
-                              </a>
-                            </div>
-                          )}
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="text-gray-500 italic text-xs md:text-sm">
-                      Belum ada materi untuk bab ini.
-                    </p>
-                  )}
+                           <div className={activeLesson?.id === lesson.id ? 'text-white' : 'text-gray-400'}>
+                             {lesson.contentType === 'youtube' ? <PlayCircle size={16} /> : <FileText size={16} />}
+                           </div>
+                           <span className="truncate text-xs">{lesson.title}</span>
+                        </button>
+                     ))}
+                   </div>
                 </div>
-              ))}
-            </div>
-          )}
+             ))}
+           </div>
         </div>
+
       </div>
     </div>
   );
