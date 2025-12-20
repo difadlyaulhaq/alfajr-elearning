@@ -125,46 +125,41 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
             </Link>
           );
         })}
+
+        {/* Bottom Actions (Mobile/Scrollable) */}
+        <div className="mt-5 space-y-2">
+            {/* Back to Admin */}
+            {user && user.role === 'admin' && (
+              <Link 
+                href="/admin/dashboard"
+                onClick={handleNavigation}
+                className="relative flex items-center px-3 md:px-4 py-1.5 md:py-2 text-xs md:text-sm font-medium rounded-xl text-gray-300 hover:bg-gradient-to-r hover:from-gray-800/30 hover:to-gray-700/30 hover:text-[#C5A059] transition-all group border border-gray-800/30 hover:border-[#C5A059]/30"
+              >
+                <ChevronLeft className="w-4 h-4 md:w-5 md:h-5 mr-2 md:mr-3 text-[#C5A059]" />
+                <span>Kembali ke Admin</span>
+              </Link>
+            )}
+
+            {/* Logout */}
+            <button
+              onClick={handleLogout}
+              disabled={isLoading}
+              className="relative w-full flex items-center justify-center px-3 md:px-4 py-2 md:py-2.5 bg-red-600 text-white text-xs md:text-sm font-semibold rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed border border-red-600 shadow-lg shadow-red-900/20"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 md:w-5 md:h-5 mr-2 md:mr-3 animate-spin" />
+                  Keluar...
+                </>
+              ) : (
+                <>
+                  <LogOut className="w-4 h-4 md:w-5 md:h-5 mr-2 md:mr-3" />
+                  Keluar
+                </>
+              )}
+            </button>
+        </div>
       </nav>
-
-      {/* Bottom Section */}
-      <div className="px-3 md:px-4 py-3 md:py-4 border-t border-gray-800/50 space-y-2 relative">
-        <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent pointer-events-none"></div>
-        
-        {/* Back to Admin */}
-        {user && user.role === 'admin' && (
-          <Link 
-            href="/admin/dashboard"
-            onClick={handleNavigation}
-            className="relative flex items-center px-3 md:px-4 py-2 md:py-2.5 text-xs md:text-sm font-medium rounded-xl text-gray-300 hover:bg-gradient-to-r hover:from-gray-800/30 hover:to-gray-700/30 hover:text-[#C5A059] transition-all group border border-gray-800/30 hover:border-[#C5A059]/30"
-          >
-            <ChevronLeft className="w-4 h-4 md:w-5 md:h-5 mr-2 md:mr-3 text-[#C5A059]" />
-            <span>Kembali ke Admin</span>
-          </Link>
-        )}
-
-        {/* Logout */}
-        <button
-          onClick={handleLogout}
-          disabled={isLoading}
-          className="relative w-full flex items-center justify-center px-3 md:px-4 py-2.5 md:py-3 text-xs md:text-sm font-semibold rounded-xl transition-all border disabled:opacity-50 disabled:cursor-not-allowed bg-gradient-to-r from-[#DC3545]/20 to-[#C82333]/20 text-[#DC3545] border-[#DC3545]/30 hover:from-[#DC3545]/40 hover:to-[#C82333]/40 hover:border-[#DC3545]/50 hover:shadow-lg hover:shadow-[#DC3545]/20"
-        >
-          {isLoading ? (
-            <>
-              <Loader2 className="w-4 h-4 md:w-5 md:h-5 mr-2 md:mr-3 animate-spin" />
-              Keluar...
-            </>
-          ) : (
-            <>
-              <LogOut className="w-4 h-4 md:w-5 md:h-5 mr-2 md:mr-3" />
-              Keluar
-            </>
-          )}
-        </button>
-      </div>
-
-      {/* Bottom Gradient */}
-      <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-black via-black/50 to-transparent pointer-events-none"></div>
     </>
   );
 

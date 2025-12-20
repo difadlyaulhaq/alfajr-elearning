@@ -206,26 +206,25 @@ const AdminSidebar = ({ isOpen, onClose }: AdminSidebarProps) => {
             )}
           </div>
         ))}
-      </nav>
 
-      {/* Logout Button */}
-      <div className="border-t border-gray-800/50 p-3 md:p-4 relative">
-        <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
-        <button 
-          onClick={handleLogout}
-          disabled={isLoggingOut}
-          className="relative w-full flex items-center justify-center space-x-2 md:space-x-3 px-3 md:px-4 py-2.5 md:py-3 text-gray-300 hover:bg-gradient-to-r hover:from-red-900/30 hover:to-red-800/30 hover:text-red-400 rounded-xl transition-all group disabled:opacity-50 disabled:cursor-not-allowed border border-gray-800/50 hover:border-red-500/30 text-xs md:text-sm"
-        >
-          {isLoggingOut ? (
-            <Loader className="animate-spin" size={18} />
-          ) : (
-            <LogOut size={18} className="group-hover:text-red-400" />
-          )}
-          <span className="font-semibold">
-            {isLoggingOut ? 'Keluar...' : 'Logout'}
-          </span>
-        </button>
-      </div>
+        {/* Logout Button (Mobile/Scrollable) */}
+        <div className="mt-5 px-1 md:px-0">
+            <button 
+              onClick={handleLogout}
+              disabled={isLoggingOut}
+              className="relative w-full flex items-center justify-center space-x-2 md:space-x-3 px-3 md:px-4 py-2 md:py-2.5 bg-red-600 text-white rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed border border-red-600 text-xs md:text-sm shadow-lg shadow-red-900/20"
+            >
+              {isLoggingOut ? (
+                <Loader className="animate-spin" size={18} />
+              ) : (
+                <LogOut size={18} />
+              )}
+              <span className="font-semibold">
+                {isLoggingOut ? 'Keluar...' : 'Logout'}
+              </span>
+            </button>
+        </div>
+      </nav>
     </>
   );
 
@@ -246,7 +245,6 @@ const AdminSidebar = ({ isOpen, onClose }: AdminSidebarProps) => {
         md:translate-x-0 md:w-64 w-64
       `}>
         <SidebarContent />
-        <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-black to-transparent pointer-events-none"></div>
       </div>
 
       {/* Spacer for desktop layout */}
