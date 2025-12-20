@@ -331,7 +331,7 @@ export function LessonPlayerMobile({
               </div>
               
               {/* Video Info Overlay */}
-               <div className="absolute top-4 left-4 right-4 pointer-events-none z-10">
+               {/* <div className="absolute top-4 left-4 right-4 pointer-events-none z-10">
                 <div className="bg-black/50 backdrop-blur-sm rounded-lg p-3">
                   <div className="flex items-center gap-2 mb-1">
                     <Youtube size={16} className="text-white" />
@@ -341,7 +341,7 @@ export function LessonPlayerMobile({
                     {lesson.title}
                   </h2>
                 </div>
-              </div> 
+              </div>  */}
             </div>
           )}
         </div>
