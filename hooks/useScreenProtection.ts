@@ -2,6 +2,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { isMobileDevice, initializeMobileProtection } from '@/lib/security/mobileProtection';
 
 interface ScreenProtectionOptions {
   enableWatermark?: boolean;
@@ -44,6 +45,13 @@ export const useScreenProtection = (options: ScreenProtectionOptions = {}) => {
   const coolDownTimerRef = useRef<NodeJS.Timeout | null>(null);
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const isMouseInsideRef = useRef(true); // Track if mouse is inside window
+
+  // Initialize mobile protection
+  useEffect(() => {
+    if (isMobileDevice()) {
+      initializeMobileProtection();
+    }
+  }, []);
 
   // Smart blur detection - hanya trigger jika benar-benar pindah tab/window
   const handleBlur = useCallback(() => {
