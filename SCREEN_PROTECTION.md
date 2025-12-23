@@ -191,10 +191,23 @@ import { ScreenProtection } from '@/components/shared/ScreenProtection';
    - Solusi: Watermark user-specific tetap muncul di recording
 
 3. **Mobile Devices**
-   - Screenshot mobile OS-level sulit diblock
-   - Solusi: Gunakan `mobileProtection.ts` untuk deteksi tambahan
+   - Screenshot mobile OS-level (tombol fisik) sulit diblock sepenuhnya di browser.
+   - **Solusi Terimplementasi (v2.3):**
+     - `mobileProtection.ts` aktif otomatis di perangkat mobile.
+     - Blokir **Context Menu** (Long press) untuk mencegah save image.
+     - Blokir **Selection** & **Copy/Paste** via CSS & Events.
+     - Blokir **Drag & Drop** konten.
+     - Blokir **Touch Callout** (iOS).
+     - Deteksi **Focus Loss** saat screenshot UI muncul (depend on OS).
 
 ## 📝 Changelog
+
+### Version 2.3 (Mobile Update) 📱
+- ✅ **Mobile Device Detection** - Otomatis mendeteksi perangkat mobile
+- ✅ **Touch Interaction Blocking** - Mencegah long-press dan menu konteks
+- ✅ **Content Selection Guard** - Mencegah seleksi teks dan gambar di mobile
+- ✅ **iOS Specifics** - Disable touch callout menu di iOS
+- ✅ **Mobile Event Listeners** - Listener khusus untuk drag dan touch events
 
 ### Version 2.2 (Current) 🔒
 - ✅ **Balanced Countdown Policy** - Screenshot 10s, blur/tab switch 5s
