@@ -4,12 +4,13 @@ export const isMobileDevice = (): boolean => {
   return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 };
 
-export const initializeMobileProtection = () => {
+export const initializeMobileProtection = (onViolation?: (action: string) => void) => {
   if (typeof window === 'undefined') return;
 
   // Prevent context menu (long press)
   window.addEventListener('contextmenu', (e) => {
     e.preventDefault();
+    onViolation?.('mobile_context_menu');
   }, { capture: true });
 
   // Disable text selection and touch callout
@@ -22,5 +23,6 @@ export const initializeMobileProtection = () => {
   // Prevent drag
   window.addEventListener('dragstart', (e) => {
     e.preventDefault();
+    onViolation?.('mobile_drag_start');
   }, { capture: true });
 };

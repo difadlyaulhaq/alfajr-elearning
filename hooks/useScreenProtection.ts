@@ -49,7 +49,19 @@ export const useScreenProtection = (options: ScreenProtectionOptions = {}) => {
   // Initialize mobile protection
   useEffect(() => {
     if (isMobileDevice()) {
-      initializeMobileProtection();
+      initializeMobileProtection((action) => {
+        attemptCountRef.current++;
+        // Log mobile violation
+        fetch('/api/security/log', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: action,
+            page: window.location.pathname,
+            details: { userAgent: navigator.userAgent },
+          }),
+        }).catch(() => {}); // Ignore errors
+      });
     }
   }, []);
 
