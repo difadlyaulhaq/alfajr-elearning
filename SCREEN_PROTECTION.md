@@ -205,6 +205,9 @@ import { ScreenProtection } from '@/components/shared/ScreenProtection';
 ### Version 2.3 (Mobile Update) 📱
 - ✅ **Mobile Device Detection** - Otomatis mendeteksi perangkat mobile
 - ✅ **Touch Interaction Blocking** - Mencegah long-press dan menu konteks
+- ✅ **Gesture Detection** - Mendeteksi gesture 3 jari (screenshot) dan memicu proteksi
+- ✅ **Palm Swipe Detection** - Mendeteksi usapan telapak tangan (Samsung) via touch area (Experimental)
+- ✅ **Hardware Key Detection** - Monitor tombol Volume/Power jika terexpose ke browser (Best Effort)
 - ✅ **Content Selection Guard** - Mencegah seleksi teks dan gambar di mobile
 - ✅ **iOS Specifics** - Disable touch callout menu di iOS
 - ✅ **Mobile Event Listeners** - Listener khusus untuk drag dan touch events
