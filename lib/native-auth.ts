@@ -1,58 +1,43 @@
-import { Capacitor } from '@capacitor/core';
-import { FirebaseAuthentication } from '@capacitor-firebase/authentication';
-import { GoogleAuthProvider, signInWithCredential, signInWithPopup, signInWithRedirect, UserCredential } from 'firebase/auth';
+import { GoogleAuthProvider, signInWithPopup, signInWithRedirect, UserCredential } from 'firebase/auth';
 import { auth } from './firebase/config';
 
+// Helper untuk deteksi mobile
+const isMobile = () => {
+  if (typeof window === 'undefined') return false;
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+};
+
 export const nativeSignInWithGoogle = async (): Promise<UserCredential | void> => {
-  const isNative = Capacitor.isNativePlatform();
-  console.log("Login Triggered. Platform is Native?", isNative);
+  const provider = new GoogleAuthProvider();
+  
+  // Tambahkan prompt select_account agar user bisa ganti akun
+  provider.setCustomParameters({
+    prompt: 'select_account'
+  });
 
-  // 1. Cek apakah berjalan di Native App (Android/iOS)
-  if (isNative) {
-    try {
-      console.log("Starting Native Google Sign In...");
-      // 2. Login menggunakan Native Plugin
-      const result = await FirebaseAuthentication.signInWithGoogle();
-      console.log("Native Sign In Success. Result:", result);
-      
-      // 3. Ambil ID Token dari hasil login native
-      const idToken = result.credential?.idToken;
-      
-      if (!idToken) {
-        throw new Error('No ID Token found from Native Google Sign In');
-      }
-
-      // 4. Buat Credential untuk Firebase JS SDK
-      const credential = GoogleAuthProvider.credential(idToken);
-      
-      // 5. Sign In ke Firebase JS SDK menggunakan credential tersebut
-      return await signInWithCredential(auth, credential);
-    } catch (error) {
-      console.error('Native Google Sign In Error Details:', error);
-      // Jangan fallback ke web popup jika di native, karena pasti gagal juga di webview
-      alert(`Login Gagal: ${(error as any).message}`); 
-      throw error;
-    }
-  } else {
-    // 6. Jika di Web, gunakan signInWithPopup (Desktop) atau Redirect (Mobile Web)
-    // Untuk konsistensi dan menghindari popup blocker di HP, Redirect sering lebih baik.
-    // Namun, signInWithPopup memberikan UX lebih mulus di Desktop.
+  try {
+    // Jika di Mobile (baik itu Web Browser HP atau Native App WebView)
+    // Kita gunakan Redirect karena Popup sering diblokir di lingkungan mobile
+    if (isMobile()) {
+      console.log("Mobile detected, using signInWithRedirect...");
+      await signInWithRedirect(auth, provider);
+      return; // Fungsi akan berhenti di sini karena halaman akan pindah/reload
+    } 
     
-    const provider = new GoogleAuthProvider();
+    // Jika di Desktop, gunakan Popup (UX lebih bagus)
+    console.log("Desktop detected, using signInWithPopup...");
+    return await signInWithPopup(auth, provider);
     
-    try {
-        return await signInWithPopup(auth, provider);
-    } catch (error: any) {
-        // Jika Popup diblokir atau gagal (biasanya error code: auth/popup-blocked), 
-        // fallback ke Redirect
-        if (error.code === 'auth/popup-blocked' || error.code === 'auth/popup-closed-by-user') {
-            console.warn("Popup blocked, falling back to redirect...");
-            await signInWithRedirect(auth, provider);
-            // signInWithRedirect tidak return apa-apa langsung, 
-            // result diambil setelah reload page (perlu handle di useEffect)
-            return; 
-        }
-        throw error;
+  } catch (error: any) {
+    console.error("Login Error:", error);
+    
+    // Fallback terakhir jika Popup gagal
+    if (error.code === 'auth/popup-blocked') {
+      await signInWithRedirect(auth, provider);
+      return;
     }
+    
+    alert(`Gagal login: ${error.message}`);
+    throw error;
   }
 };
