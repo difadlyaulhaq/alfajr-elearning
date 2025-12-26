@@ -2,7 +2,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import { Mail, Lock, Eye, EyeOff, Loader, Shield, Users, ArrowLeft, Smartphone } from 'lucide-react';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { signInWithEmailAndPassword, getRedirectResult } from 'firebase/auth';
 import { auth } from '@/lib/firebase/config';
 import { useRouter } from 'next/navigation';
 import DownloadAppButton from '@/components/shared/DownloadAppButton';
@@ -17,6 +17,40 @@ const LoginPage = () => {
   const [showRoleChoice, setShowRoleChoice] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const router = useRouter();
+
+  // Handle Redirect Result (Fallback Login Web)
+  useEffect(() => {
+    const handleRedirectLogin = async () => {
+      try {
+        const result = await getRedirectResult(auth);
+        if (result) {
+          setIsLoading(true);
+          const token = await result.user.getIdToken();
+          
+          const response = await fetch('/api/auth/session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token }),
+          });
+
+          const data = await response.json();
+          if (response.ok && data.success) {
+            const userRole = data.user?.role?.trim().toLowerCase();
+            handleRedirect(userRole);
+          } else {
+            setError(data.error || 'Login gagal setelah redirect.');
+            setIsLoading(false);
+          }
+        }
+      } catch (error: any) {
+        console.error("Redirect Login Error:", error);
+        setError(getErrorMessage(error.code));
+        setIsLoading(false);
+      }
+    };
+
+    handleRedirectLogin();
+  }, []);
 
   // Deteksi ukuran layar
   useEffect(() => {
