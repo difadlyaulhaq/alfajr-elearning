@@ -110,6 +110,12 @@ const LoginPage = () => {
       // Menggunakan helper custom untuk support Native (Android/iOS) & Web
       // Import ini harus ditambahkan di atas: import { nativeSignInWithGoogle } from '@/lib/native-auth';
       const userCredential = await nativeSignInWithGoogle();
+      
+      if (!userCredential || !userCredential.user) {
+        // Jika void, berarti sedang redirect atau user cancel
+        return;
+      }
+
       const token = await userCredential.user.getIdToken();
       
       const response = await fetch('/api/auth/session', {
