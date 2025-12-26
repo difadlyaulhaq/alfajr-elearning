@@ -46,6 +46,27 @@ export const useScreenProtection = (options: ScreenProtectionOptions = {}) => {
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const isMouseInsideRef = useRef(true); // Track if mouse is inside window
 
+<<<<<<< HEAD
+=======
+  // Initialize mobile protection
+  useEffect(() => {
+    if (isMobileDevice()) {
+      initializeMobileProtection((action) => {
+        attemptCountRef.current++;
+        // Log mobile violation
+        fetch('/api/security/log', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: action,
+            page: window.location.pathname,
+            details: { userAgent: navigator.userAgent },
+          }),
+        }).catch(() => {}); // Ignore errors
+      });
+    }
+  }, []);
+>>>>>>> 9946c47728fb724f1caacf6170828ffcb38cc036
 
 
   // Start countdown timer
