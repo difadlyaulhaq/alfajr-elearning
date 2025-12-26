@@ -114,7 +114,11 @@ export const useScreenProtection = (options: ScreenProtectionOptions = {}) => {
         const action = event.type; // Extract type from ViolationEvent
 
         // Handle specific mobile violations
-        if (action === 'mobile_screenshot_gesture' || action === 'mobile_palm_gesture' || action === 'mobile_hardware_button') {
+        if (action === 'mobile_screenshot_gesture' || 
+            action === 'mobile_palm_gesture' || 
+            action === 'mobile_hardware_button' ||
+            action === 'mobile_hardware_combo' ||
+            action === 'mobile_power_double_click') {
           setIsViolation(true);
           setViolationType('screenshot');
           setCountdown(10);

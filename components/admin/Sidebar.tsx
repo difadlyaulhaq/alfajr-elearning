@@ -240,7 +240,7 @@ const AdminSidebar = ({ isOpen, onClose }: AdminSidebarProps) => {
 
       {/* Sidebar - Mobile Drawer / Desktop Fixed */}
       <div className={`
-        fixed top-0 left-0 h-screen bg-gradient-to-b from-black via-gray-900 to-black text-white flex flex-col shadow-2xl z-50 transition-transform duration-300 ease-in-out
+        fixed top-0 left-0 h-screen bg-gradient-to-b from-black via-gray-900 to-black text-white flex flex-col shadow-2xl z-50 transition-transform duration-300 ease-in-out pt-[env(safe-area-inset-top)]
         ${isOpen ? 'translate-x-0' : '-translate-x-full'}
         md:translate-x-0 md:w-64 w-64
       `}>

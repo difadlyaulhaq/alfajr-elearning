@@ -98,52 +98,81 @@ export function VideoPlayer({
 
   useEffect(() => {
     if (!videoId) return;
-    
-    const onYouTubeIframeAPIReady = () => {
-      if (player) {
-         try { player.destroy(); } catch(e) {} 
+
+    let playerInstance: YT.Player | null = null;
+    let checkInterval: NodeJS.Timeout | null = null;
+
+    const initPlayer = () => {
+      // Pastikan container ada dan YT API sudah load
+      if (!window.YT || !window.YT.Player || !document.getElementById(`youtube-player-${lesson.id}`)) {
+        return false;
       }
-      if (progressInterval) clearInterval(progressInterval);
-      
-      const newPlayer = new YT.Player(`youtube-player-${lesson.id}`, {
-        height: '100%',
-        width: '100%',
-        videoId: videoId,
-        playerVars: { 
-          'playsinline': 1, 
-          'controls': 1, 
-          'rel': 0, 
-          'modestbranding': 1,
-          'disablekb': 1, // Disable keyboard controls to prevent shortcuts
-        },
-        events: { 
-          'onStateChange': onPlayerStateChange,
-          'onReady': (event) => {
-            // Store reference to the actual video element if needed
-            const iframe = event.target.getIframe();
-            if (iframe) {
-              videoElementRef.current = iframe as any;
+
+      try {
+        if (player) {
+           player.destroy(); // Hancurkan player lama jika ada sisa
+        }
+        
+        playerInstance = new window.YT.Player(`youtube-player-${lesson.id}`, {
+          height: '100%',
+          width: '100%',
+          videoId: videoId,
+          playerVars: { 
+            'playsinline': 1, 
+            'controls': 1, 
+            'rel': 0, 
+            'modestbranding': 1,
+            'disablekb': 1, 
+            'origin': window.location.origin // Penting untuk security
+          },
+          events: { 
+            'onStateChange': onPlayerStateChange,
+            'onReady': (event) => {
+              const iframe = event.target.getIframe();
+              if (iframe) {
+                videoElementRef.current = iframe as any;
+              }
+            },
+            'onError': (e) => {
+              console.error("YouTube Player Error:", e);
+              toast.error("Gagal memuat video. Coba refresh halaman.");
             }
           }
-        }
-      });
-      setPlayer(newPlayer);
+        });
+        setPlayer(playerInstance);
+        return true; // Sukses init
+      } catch (error) {
+        console.error("Error init player:", error);
+        return false;
+      }
     };
-    
-    if (window.YT && window.YT.Player) {
-      onYouTubeIframeAPIReady();
-    } else {
-      (window as any).onYouTubeIframeAPIReady = onYouTubeIframeAPIReady;
+
+    // Cek apakah script API sudah ada
+    if (!window.YT) {
+      // Jika belum ada tag script, inject
       if (!document.querySelector('script[src="https://www.youtube.com/iframe_api"]')) {
         const tag = document.createElement('script');
         tag.src = "https://www.youtube.com/iframe_api";
-        const firstScriptTag = document.getElementsByTagName('script')[0];
-        firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
+        document.body.appendChild(tag);
       }
     }
-    
+
+    // Gunakan interval untuk cek kesiapan YT API
+    // Ini lebih reliable daripada callback onYouTubeIframeAPIReady yang kadang terlewat
+    checkInterval = setInterval(() => {
+      const success = initPlayer();
+      if (success && checkInterval) {
+        clearInterval(checkInterval);
+      }
+    }, 500);
+
     return () => {
-       if (progressInterval) clearInterval(progressInterval);
+      if (checkInterval) clearInterval(checkInterval);
+      if (progressInterval) clearInterval(progressInterval);
+      // Jangan destroy player di sini agar transisi antar lesson lebih mulus, 
+      // atau destroy jika memory leak isu.
+      // Aman-nya destroy:
+      // if (playerInstance) playerInstance.destroy(); 
     };
   }, [videoId, lesson.id]);
 
