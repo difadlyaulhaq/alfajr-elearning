@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Alfajr E-Learning</string>
+    <string name="title_activity_main">Alfajr E-Learning</string>
+    <string name="package_name">com.alfajr.elearning</string>
+    <string name="custom_url_scheme">com.alfajr.elearning</string>
+</resources>

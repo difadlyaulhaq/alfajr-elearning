@@ -172,6 +172,19 @@ const ProfilePage = () => {
                         )}
                     </div>
                 </div>
+
+                {/* --- LOGOUT SECTION --- */}
+                <div className="mt-8 mb-8">
+                   <button 
+                       onClick={() => window.location.href = '/api/auth/logout'}
+                       className="w-full bg-red-50 text-red-600 border border-red-200 font-bold py-4 rounded-xl hover:bg-red-100 transition-colors shadow-sm flex items-center justify-center gap-2"
+                   >
+                       Keluar dari Aplikasi
+                   </button>
+                   <p className="text-center text-xs text-gray-400 mt-4">
+                       Versi Aplikasi 1.0.0
+                   </p>
+                </div>
             </div>
         </div>
     );

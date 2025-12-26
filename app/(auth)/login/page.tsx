@@ -2,9 +2,11 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import { Mail, Lock, Eye, EyeOff, Loader, Shield, Users, ArrowLeft, Smartphone } from 'lucide-react';
-import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
+import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '@/lib/firebase/config';
 import { useRouter } from 'next/navigation';
+import DownloadAppButton from '@/components/shared/DownloadAppButton';
+import { nativeSignInWithGoogle } from '@/lib/native-auth';
 
 const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -71,8 +73,9 @@ const LoginPage = () => {
     setError('');
 
     try {
-      const provider = new GoogleAuthProvider();
-      const userCredential = await signInWithPopup(auth, provider);
+      // Menggunakan helper custom untuk support Native (Android/iOS) & Web
+      // Import ini harus ditambahkan di atas: import { nativeSignInWithGoogle } from '@/lib/native-auth';
+      const userCredential = await nativeSignInWithGoogle();
       const token = await userCredential.user.getIdToken();
       
       const response = await fetch('/api/auth/session', {
@@ -162,6 +165,9 @@ const LoginPage = () => {
             <p className="text-gray-300 text-xs text-center px-4">
               Silahkan Login Dengan Akun Pegawai Alfajr Anda
             </p>
+            <div className="mt-6 w-full max-w-[200px]">
+              <DownloadAppButton variant="white-outline" className="w-full text-xs py-2.5" />
+            </div>
           </div>
 
           {/* Desktop Header (hidden on mobile) */}
@@ -171,6 +177,9 @@ const LoginPage = () => {
             </div>
             <h1 className="text-3xl font-bold text-white mb-2">Alfajr E-learning</h1>
             <p className="text-gray-400 text-sm mt-2">Silahkan Login Dengan Akun Pegawai Alfajr Anda</p>
+            <div className="mt-4 flex justify-center">
+              <DownloadAppButton variant="white-outline" className="text-sm py-2 px-6" />
+            </div>
           </div>
 
           {/* Login Card */}
