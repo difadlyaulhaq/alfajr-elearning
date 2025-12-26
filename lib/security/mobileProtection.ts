@@ -28,7 +28,6 @@ export const isMobileDevice = (): boolean => {
   return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 };
 
-<<<<<<< HEAD
 export const requestDeviceMotionPermission = async (): Promise<boolean> => {
   if (typeof window !== 'undefined' && typeof (window as any).DeviceMotionEvent !== 'undefined' && typeof ((window as any).DeviceMotionEvent as any).requestPermission === 'function') {
     try {
@@ -172,16 +171,6 @@ export const initializeMobileProtection = (
 
   // Prevent context menu (long press)
   window.addEventListener('contextmenu', handleContextMenu, { capture: true });
-=======
-export const initializeMobileProtection = (onViolation?: (action: string) => void) => {
-  if (typeof window === 'undefined') return;
-
-  // Prevent context menu (long press)
-  window.addEventListener('contextmenu', (e) => {
-    e.preventDefault();
-    onViolation?.('mobile_context_menu');
-  }, { capture: true });
->>>>>>> 9946c47728fb724f1caacf6170828ffcb38cc036
 
   // Disable text selection and touch callout
   const originalUserSelect = document.documentElement.style.userSelect;
@@ -194,7 +183,6 @@ export const initializeMobileProtection = (onViolation?: (action: string) => voi
   // @ts-ignore
   document.documentElement.style.webkitTouchCallout = 'none';
 
-<<<<<<< HEAD
   // Pointer Events Registration
   const options: AddEventListenerOptions = { capture: true, passive: false };
   window.addEventListener('pointerdown', handlePointerDown, options);
@@ -226,11 +214,4 @@ export const initializeMobileProtection = (onViolation?: (action: string) => voi
     swipeStartTimes.clear();
     swipeStartPositions.clear();
   };
-=======
-  // Prevent drag
-  window.addEventListener('dragstart', (e) => {
-    e.preventDefault();
-    onViolation?.('mobile_drag_start');
-  }, { capture: true });
->>>>>>> 9946c47728fb724f1caacf6170828ffcb38cc036
 };
