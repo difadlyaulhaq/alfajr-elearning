@@ -4,4 +4,7 @@
     <string name="title_activity_main">Alfajr E-Learning</string>
     <string name="package_name">com.alfajr.elearning</string>
     <string name="custom_url_scheme">com.alfajr.elearning</string>
+    <!-- GANTI INI DENGAN WEB CLIENT ID DARI FIREBASE CONSOLE ANDA -->
+    <!-- Format: xxxxxxxxxx-xxxxxxxxxxxxxxxxxxxx.apps.googleusercontent.com -->
+    <string name="server_client_id">YOUR_WEB_CLIENT_ID_HERE</string>
 </resources>
