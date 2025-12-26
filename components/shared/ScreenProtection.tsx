@@ -4,6 +4,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import ReactDOM from 'react-dom'; // Import ReactDOM for createPortal
 import { useScreenProtection } from '@/hooks/useScreenProtection';
+import { requestDeviceMotionPermission } from '@/lib/security/mobileProtection';
 import { Shield, Eye, EyeOff } from 'lucide-react';
 
 interface ScreenProtectionProps {
@@ -118,6 +119,24 @@ export const ScreenProtection: React.FC<ScreenProtectionProps> = ({
     return watermarkText;
   }, [watermarkText, userEmail]);
 
+  // Request Device Motion Permission (iOS 13+) on user interaction
+  useEffect(() => {
+    const handleUserInteraction = async () => {
+      await requestDeviceMotionPermission();
+      // Remove listener after first interaction attempt
+      document.removeEventListener('click', handleUserInteraction);
+      document.removeEventListener('touchstart', handleUserInteraction);
+    };
+
+    document.addEventListener('click', handleUserInteraction);
+    document.addEventListener('touchstart', handleUserInteraction);
+
+    return () => {
+      document.removeEventListener('click', handleUserInteraction);
+      document.removeEventListener('touchstart', handleUserInteraction);
+    };
+  }, []);
+
   return (
     <>
       <style jsx global>{`
@@ -127,6 +146,7 @@ export const ScreenProtection: React.FC<ScreenProtectionProps> = ({
           -ms-user-select: none;
           user-select: none;
           -webkit-touch-callout: none;
+          touch-action: manipulation; /* Disable double-tap zoom, allow pan */
         }
 
         .screen-protected * {

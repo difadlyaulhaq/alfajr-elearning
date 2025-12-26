@@ -46,32 +46,7 @@ export const useScreenProtection = (options: ScreenProtectionOptions = {}) => {
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const isMouseInsideRef = useRef(true); // Track if mouse is inside window
 
-  // Initialize mobile protection
-  useEffect(() => {
-    if (isMobileDevice()) {
-      initializeMobileProtection();
-    }
-  }, []);
 
-  // Smart blur detection - hanya trigger jika benar-benar pindah tab/window
-  const handleBlur = useCallback(() => {
-    if (!enableBlurOnFocusLoss) return;
-    
-    // Delay blur untuk membedakan antara klik dalam page vs pindah tab
-    if (blurDebounceRef.current) {
-      clearTimeout(blurDebounceRef.current);
-    }
-    
-    blurDebounceRef.current = setTimeout(() => {
-      // Hanya blur jika document benar-benar hidden atau window blur
-      if (document.hidden || !document.hasFocus()) {
-        setIsBlurred(true);
-        setViolationType('blur');
-        setCountdown(5);
-        startCountdown(5);
-      }
-    }, 100); // 100ms delay untuk menghindari false trigger
-  }, [enableBlurOnFocusLoss]);
 
   // Start countdown timer
   const startCountdown = useCallback((seconds: number) => {
@@ -100,6 +75,78 @@ export const useScreenProtection = (options: ScreenProtectionOptions = {}) => {
       }
     }, 1000);
   }, []);
+
+  // Smart blur detection - hanya trigger jika benar-benar pindah tab/window
+  const handleBlur = useCallback(() => {
+    if (!enableBlurOnFocusLoss) return;
+    
+    // Immediate trigger for mobile devices (Camera, Notification shade, App Switch)
+    if (isMobileDevice()) {
+      if (blurDebounceRef.current) clearTimeout(blurDebounceRef.current);
+      
+      setIsBlurred(true);
+      setViolationType('blur');
+      setCountdown(5);
+      startCountdown(5);
+      return;
+    }
+
+    // Delay blur untuk membedakan antara klik dalam page vs pindah tab (Desktop)
+    if (blurDebounceRef.current) {
+      clearTimeout(blurDebounceRef.current);
+    }
+    
+    blurDebounceRef.current = setTimeout(() => {
+      // Hanya blur jika document benar-benar hidden atau window blur
+      if (document.hidden || !document.hasFocus()) {
+        setIsBlurred(true);
+        setViolationType('blur');
+        setCountdown(5);
+        startCountdown(5);
+      }
+    }, 100); // 100ms delay untuk menghindari false trigger
+  }, [enableBlurOnFocusLoss, startCountdown]);
+
+  // Initialize mobile protection with gesture support
+  useEffect(() => {
+    if (isMobileDevice()) {
+      const cleanup = initializeMobileProtection((event) => {
+        attemptCountRef.current++;
+
+        const action = event.type; // Extract type from ViolationEvent
+
+        // Handle specific mobile violations
+        if (action === 'mobile_screenshot_gesture' || action === 'mobile_palm_gesture' || action === 'mobile_hardware_button') {
+          setIsViolation(true);
+          setViolationType('screenshot');
+          setCountdown(10);
+          startCountdown(10);
+          
+          try {
+            navigator.clipboard.writeText('⚠️ Screenshot tidak diizinkan').catch(() => {});
+          } catch (error) {}
+          
+          onScreenshotAttempt?.();
+        }
+        
+        // Log mobile violation
+        fetch('/api/security/log', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: action,
+            page: window.location.pathname,
+            details: { 
+              userAgent: navigator.userAgent,
+              ...event.details 
+            },
+          }),
+        }).catch(() => {});
+      });
+      
+      return cleanup;
+    }
+  }, [startCountdown, onScreenshotAttempt]);
 
   const handleFocus = useCallback(() => {
     if (!enableBlurOnFocusLoss) return;
