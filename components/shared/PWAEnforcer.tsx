@@ -74,12 +74,12 @@ export default function PWAEnforcer({ children }: { children: React.ReactNode })
         </div>
         
         {/* Manual hint in case prompt doesn't show */}
-        <div className="mt-12 p-4 bg-gray-50 rounded-2xl border border-gray-100 max-w-sm">
+        {/* <div className="mt-12 p-4 bg-gray-50 rounded-2xl border border-gray-100 max-w-sm">
           <p className="text-xs text-gray-500 font-medium mb-1">Panduan Manual:</p>
           <p className="text-[10px] text-gray-400 leading-relaxed">
             Jika tombol di atas tidak merespon, buka menu browser Anda (ikon ⋮ atau ⎋) lalu pilih <span className="text-gray-700 font-bold">"Add to Home Screen"</span> atau <span className="text-gray-700 font-bold">"Install App"</span>.
           </p>
-        </div>
+        </div> */}
       </div>
     );
   }
