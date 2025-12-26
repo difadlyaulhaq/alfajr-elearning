@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import 'highlight.js/styles/github-dark.css';
 import PWAEnforcer from "@/components/shared/PWAEnforcer";
+import { AuthProvider } from "@/context/AuthContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -46,9 +47,11 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <PWAEnforcer>
-          {children}
-        </PWAEnforcer>
+        <AuthProvider>
+          <PWAEnforcer>
+            {children}
+          </PWAEnforcer>
+        </AuthProvider>
       </body>
     </html>
   );

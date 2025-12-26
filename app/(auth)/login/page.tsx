@@ -7,6 +7,7 @@ import { auth } from '@/lib/firebase/config';
 import { useRouter } from 'next/navigation';
 import DownloadAppButton from '@/components/shared/DownloadAppButton';
 import { nativeSignInWithGoogle } from '@/lib/native-auth';
+import { useAuth } from '@/context/AuthContext';
 
 const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -17,6 +18,14 @@ const LoginPage = () => {
   const [showRoleChoice, setShowRoleChoice] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const router = useRouter();
+  const { isAuthenticated, isLoading: isAuthLoading, user } = useAuth();
+
+  // Auto Redirect if already logged in
+  useEffect(() => {
+    if (!isAuthLoading && isAuthenticated && user) {
+       router.replace('/learning/dashboard');
+    }
+  }, [isAuthLoading, isAuthenticated, user, router]);
 
   // Handle Redirect Result (Fallback Login Web)
   useEffect(() => {

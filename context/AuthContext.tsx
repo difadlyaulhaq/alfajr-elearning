@@ -3,6 +3,8 @@
 
 import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
 import { logoutUser } from '@/lib/firebase/auth';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { auth } from '@/lib/firebase/config';
 
 // --- Tipe Data ---
 interface User {
@@ -31,23 +33,50 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const checkUserSession = async () => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       try {
-        const res = await fetch('/api/auth/session');
-        if (res.ok) {
-          const data = await res.json();
-          if (data.isAuthenticated) {
-            setUser(data.user);
+        if (firebaseUser) {
+          // 1. Cek apakah session server sudah valid
+          const res = await fetch('/api/auth/session');
+          if (res.ok) {
+            const data = await res.json();
+            if (data.isAuthenticated) {
+              // Session valid, pakai data user dari server
+              setUser(data.user);
+              setIsLoading(false);
+              return;
+            }
           }
+
+          // 2. Jika session server mati tapi Firebase hidup, lakukan silent login (Sync)
+          const token = await firebaseUser.getIdToken();
+          const loginRes = await fetch('/api/auth/session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token }),
+          });
+          
+          const loginData = await loginRes.json();
+          if (loginRes.ok && loginData.success) {
+            setUser(loginData.user);
+          } else {
+            // Gagal sync, paksa logout
+            await signOut(auth);
+            setUser(null);
+          }
+        } else {
+          // Tidak ada user di Firebase
+          setUser(null);
         }
       } catch (error) {
-        console.error('Failed to fetch user session:', error);
+        console.error('Auth state change error:', error);
+        setUser(null);
       } finally {
         setIsLoading(false);
       }
-    };
+    });
 
-    checkUserSession();
+    return () => unsubscribe();
   }, []);
 
   const logout = async () => {
