@@ -115,6 +115,8 @@ export const useScreenProtection = (options: ScreenProtectionOptions = {}) => {
 
         // Handle specific mobile violations
         if (action === 'mobile_screenshot_gesture' || 
+            action === 'mobile_screenshot_suspect' || 
+            action === 'mobile_ui_obstruct' || 
             action === 'mobile_palm_gesture' || 
             action === 'mobile_hardware_button' ||
             action === 'mobile_hardware_combo' ||
