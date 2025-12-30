@@ -11,6 +11,7 @@ export default function GlobalProtectionOverlay() {
     blackScreenReason,
     blackScreenMerk,
     isViolation,
+    trustLevel,
   } = useScreenProtection();
 
   const [protectionLevel, setProtectionLevel] = useState<'low' | 'medium' | 'high'>('high');
@@ -29,10 +30,35 @@ export default function GlobalProtectionOverlay() {
     }
   }, []);
 
+  if (trustLevel === 'banned') {
+    return (
+      <div className="fixed inset-0 z-[999999] bg-black flex items-center justify-center text-center p-8">
+        <div className="max-w-md">
+          <div className="text-6xl mb-6">❌</div>
+          <h1 className="text-3xl font-bold text-red-500 mb-4">Akses Ditangguhkan</h1>
+          <p className="text-gray-300 mb-6">
+            Akun Anda telah ditangguhkan sementara karena terdeteksi melakukan pelanggaran keamanan (screenshot/recording) berulang kali.
+          </p>
+          <p className="text-sm text-gray-500">
+            Silakan hubungi administrator untuk memulihkan akses Anda.
+          </p>
+          <div className="mt-8">
+            <button 
+              onClick={() => window.location.reload()}
+              className="px-6 py-2 bg-gray-800 hover:bg-gray-700 rounded-full text-white text-sm transition-colors"
+            >
+              Coba Lagi
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
       <BlackScreenOverlay 
-        isActive={showBlackScreen || isViolation}
+        isActive={showBlackScreen || isViolation || trustLevel === 'violation'}
         duration={protectionLevel === 'high' ? 15000 : 10000}
         watermark={`ALFAJR E-LEARNING • ${blackScreenMerk} • ${protectionLevel.toUpperCase()} PROTECTION`}
         onComplete={() => {

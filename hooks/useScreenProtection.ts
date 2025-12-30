@@ -1,4 +1,3 @@
-// hooks/useScreenProtection.ts
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from 'react';
@@ -24,7 +23,7 @@ export const useScreenProtection = (options: ScreenProtectionOptions = {}) => {
     enableKeyboardBlock = true,
     enableContextMenuBlock = true,
     enableDevToolsDetection = true,
-    enableDragBlock = true, // New option
+    enableDragBlock = true,
     watermarkText = 'PROTECTED CONTENT',
     onScreenshotAttempt,
     onRecordingDetected,
@@ -36,7 +35,7 @@ export const useScreenProtection = (options: ScreenProtectionOptions = {}) => {
   const [isDevToolsOpen, setIsDevToolsOpen] = useState(false);
   const [isViolation, setIsViolation] = useState(false);
   const [isCoolDownActive, setIsCoolDownActive] = useState(false);
-  const [countdown, setCountdown] = useState(0); // Countdown timer state
+  const [countdown, setCountdown] = useState(0);
   const [violationType, setViolationType] = useState<'screenshot' | 'devtools' | 'blur' | null>(null);
   
   // New State for black screen
@@ -44,13 +43,42 @@ export const useScreenProtection = (options: ScreenProtectionOptions = {}) => {
   const [blackScreenReason, setBlackScreenReason] = useState<string>('');
   const [blackScreenMerk, setBlackScreenMerk] = useState<string>('');
 
+  // Trust Score System
+  const [trustLevel, setTrustLevel] = useState<'trusted' | 'suspect' | 'violation' | 'banned'>('trusted');
+  const violationHistory = useRef<number[]>([]);
+
   const attemptCountRef = useRef(0);
   const lastBlurTimeRef = useRef(0);
   const blurDebounceRef = useRef<NodeJS.Timeout | null>(null);
   const wasPlayingRef = useRef(false);
   const coolDownTimerRef = useRef<NodeJS.Timeout | null>(null);
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const isMouseInsideRef = useRef(true); // Track if mouse is inside window
+  const isMouseInsideRef = useRef(true);
+
+  // Trust Score Logic
+  const recordViolation = useCallback((severity: number) => {
+    const now = Date.now();
+    violationHistory.current.push(now);
+    
+    // Remove violations older than 5 minutes
+    violationHistory.current = violationHistory.current.filter(
+      time => now - time < 300000
+    );
+    
+    // Calculate trust level
+    const recentViolations = violationHistory.current.length;
+    
+    if (recentViolations >= 5) {
+      setTrustLevel('banned');
+      // Potential logic: Logout user or block access permanently until admin review
+    } else if (recentViolations >= 3) {
+      setTrustLevel('violation');
+      // Full screen block with countdown
+    } else if (recentViolations >= 1) {
+      setTrustLevel('suspect');
+      // Warning toast only
+    }
+  }, []);
 
   // Function untuk trigger black screen
   const triggerBlackScreen = useCallback((reason: string, merk: string = '') => {
@@ -108,11 +136,10 @@ export const useScreenProtection = (options: ScreenProtectionOptions = {}) => {
     }, 1000);
   }, []);
 
-  // Smart blur detection - hanya trigger jika benar-benar pindah tab/window
+  // Smart blur detection
   const handleBlur = useCallback(() => {
     if (!enableBlurOnFocusLoss) return;
     
-    // Immediate trigger for mobile devices (Camera, Notification shade, App Switch)
     if (isMobileDevice()) {
       if (blurDebounceRef.current) clearTimeout(blurDebounceRef.current);
       
@@ -120,39 +147,38 @@ export const useScreenProtection = (options: ScreenProtectionOptions = {}) => {
       setViolationType('blur');
       setCountdown(5);
       startCountdown(5);
+      recordViolation(1); // Record blur as minor violation
       return;
     }
 
-    // Delay blur untuk membedakan antara klik dalam page vs pindah tab (Desktop)
     if (blurDebounceRef.current) {
       clearTimeout(blurDebounceRef.current);
     }
     
     blurDebounceRef.current = setTimeout(() => {
-      // Hanya blur jika document benar-benar hidden atau window blur
       if (document.hidden || !document.hasFocus()) {
         setIsBlurred(true);
         setViolationType('blur');
         setCountdown(5);
         startCountdown(5);
+        recordViolation(1);
       }
-    }, 100); // 100ms delay untuk menghindari false trigger
-  }, [enableBlurOnFocusLoss, startCountdown]);
+    }, 100);
+  }, [enableBlurOnFocusLoss, startCountdown, recordViolation]);
 
-  // Initialize mobile protection with gesture support
+  // Initialize mobile protection
   useEffect(() => {
     if (isMobileDevice()) {
       const cleanup = initializeMobileProtection((event) => {
         attemptCountRef.current++;
 
-        const action = event.type; // Extract type from ViolationEvent
+        const action = event.type;
         const details = event.details || {};
         const merk = details.merk || 'Unknown';
 
-        // Trigger black screen untuk semua violation
         triggerBlackScreen(action, merk);
+        recordViolation(2); // Mobile heuristic violations are more serious
 
-        // Handle specific mobile violations
         if (action === 'mobile_screenshot_gesture' || 
             action === 'mobile_screenshot_suspect' || 
             action === 'mobile_ui_obstruct' || 
@@ -172,7 +198,6 @@ export const useScreenProtection = (options: ScreenProtectionOptions = {}) => {
           onScreenshotAttempt?.();
         }
         
-        // Log mobile violation
         fetch('/api/security/log', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -189,27 +214,23 @@ export const useScreenProtection = (options: ScreenProtectionOptions = {}) => {
       
       return cleanup;
     }
-  }, [startCountdown, onScreenshotAttempt, triggerBlackScreen]);
+  }, [startCountdown, onScreenshotAttempt, triggerBlackScreen, recordViolation]);
 
   const handleFocus = useCallback(() => {
     if (!enableBlurOnFocusLoss) return;
 
-    // Clear any pending blur debounce
     if (blurDebounceRef.current) {
       clearTimeout(blurDebounceRef.current);
       blurDebounceRef.current = null;
     }
     
-    // Jangan set cooldown jika sedang ada violation lain
     if (isViolation) return;
     
-    // Clear any previous cool-down timer
     if (coolDownTimerRef.current) {
       clearTimeout(coolDownTimerRef.current);
       coolDownTimerRef.current = null;
     }
 
-    // Set cool-down active saat focus kembali
     setIsCoolDownActive(true);
     setIsBlurred(true);
     setViolationType('blur');
@@ -217,7 +238,7 @@ export const useScreenProtection = (options: ScreenProtectionOptions = {}) => {
     startCountdown(5);
   }, [enableBlurOnFocusLoss, isViolation, startCountdown]);
 
-  // Enhanced keyboard detection dengan deteksi lengkap
+  // Enhanced keyboard detection
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!enableKeyboardBlock) return;
@@ -225,48 +246,38 @@ export const useScreenProtection = (options: ScreenProtectionOptions = {}) => {
       let isScreenshotAttempt = false;
       let preventDefaultAction = false;
 
-      // PrintScreen key (44 = keyCode untuk PrtSc)
       if (e.key === 'PrintScreen' || e.keyCode === 44) {
         isScreenshotAttempt = true;
         preventDefaultAction = true;
       }
 
-      // Windows Snipping Tool (Win + Shift + S)
       if ((e.key === 's' || e.key === 'S') && e.shiftKey && e.metaKey) {
         isScreenshotAttempt = true;
         preventDefaultAction = true;
       }
 
-      // Windows Game Bar (Win + Alt + PrtSc atau Win + G)
       if ((e.key === 'g' || e.key === 'G') && e.metaKey) {
         isScreenshotAttempt = true;
         preventDefaultAction = true;
       }
 
-      // Mac screenshots
       if (e.metaKey && e.shiftKey) {
-        // Cmd + Shift + 3 (full screen)
-        // Cmd + Shift + 4 (selection)
-        // Cmd + Shift + 5 (screen recording)
         if (['3', '4', '5'].includes(e.key)) {
           isScreenshotAttempt = true;
           preventDefaultAction = true;
         }
       }
 
-      // Alt + PrtSc (Active window screenshot)
       if ((e.key === 'PrintScreen' || e.keyCode === 44) && e.altKey) {
         isScreenshotAttempt = true;
         preventDefaultAction = true;
       }
 
-      // Ctrl + PrtSc
       if ((e.key === 'PrintScreen' || e.keyCode === 44) && e.ctrlKey) {
         isScreenshotAttempt = true;
         preventDefaultAction = true;
       }
 
-      // Chrome DevTools shortcuts
       const isDevToolsShortcut = 
         e.key === 'F12' ||
         (e.ctrlKey && e.shiftKey && ['I', 'i', 'J', 'j', 'C', 'c'].includes(e.key)) ||
@@ -284,8 +295,8 @@ export const useScreenProtection = (options: ScreenProtectionOptions = {}) => {
         }
         
         attemptCountRef.current++;
+        recordViolation(3); // Keyboard shortcuts are definite attempts
         
-        // Flag sebagai violation dengan countdown
         setIsViolation(true);
         setViolationType('screenshot');
         setCountdown(10);
@@ -293,18 +304,14 @@ export const useScreenProtection = (options: ScreenProtectionOptions = {}) => {
         
         triggerBlackScreen(`keyboard_${e.key}`, 'Desktop');
 
-        // Clear clipboard secara agresif
         try {
           navigator.clipboard.writeText('⚠️ Screenshot tidak diizinkan').catch(() => {});
-        } catch (error) {
-          // Clipboard API tidak tersedia
-        }
+        } catch (error) {}
         
         onScreenshotAttempt?.();
       }
     };
 
-    // Gunakan capture phase untuk menangkap event lebih awal
     document.addEventListener('keydown', handleKeyDown, true);
     document.addEventListener('keyup', handleKeyDown, true);
     
@@ -312,9 +319,8 @@ export const useScreenProtection = (options: ScreenProtectionOptions = {}) => {
       document.removeEventListener('keydown', handleKeyDown, true);
       document.removeEventListener('keyup', handleKeyDown, true);
     };
-  }, [enableKeyboardBlock, enableDevToolsDetection, onScreenshotAttempt, triggerBlackScreen, startCountdown]);
+  }, [enableKeyboardBlock, enableDevToolsDetection, onScreenshotAttempt, triggerBlackScreen, startCountdown, recordViolation]);
 
-  // Visibility change detection
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.hidden) {
@@ -328,7 +334,6 @@ export const useScreenProtection = (options: ScreenProtectionOptions = {}) => {
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [handleBlur, handleFocus]);
 
-  // Track mouse position untuk mencegah false trigger
   useEffect(() => {
     const handleMouseEnter = () => {
       isMouseInsideRef.current = true;
@@ -347,10 +352,8 @@ export const useScreenProtection = (options: ScreenProtectionOptions = {}) => {
     };
   }, []);
 
-  // Window focus/blur events dengan validasi mouse
   useEffect(() => {
     const smartBlur = (e: FocusEvent) => {
-      // Hanya trigger blur jika mouse benar-benar keluar dari window
       if (!isMouseInsideRef.current || document.hidden) {
         handleBlur();
       }
@@ -365,20 +368,19 @@ export const useScreenProtection = (options: ScreenProtectionOptions = {}) => {
     };
   }, [handleBlur, handleFocus]);
 
-  // Context menu blocking
   useEffect(() => {
     if (!enableContextMenuBlock) return;
 
     const handleContextMenu = (e: MouseEvent) => {
-      e.preventDefault(); // Always prevent default if blocking is enabled
+      e.preventDefault();
       attemptCountRef.current++;
+      recordViolation(1);
     };
 
     document.addEventListener('contextmenu', handleContextMenu);
     return () => document.removeEventListener('contextmenu', handleContextMenu);
-  }, [enableContextMenuBlock]);
+  }, [enableContextMenuBlock, recordViolation]);
 
-  // DevTools detection (optimized)
   useEffect(() => {
     if (!enableDevToolsDetection) return;
 
@@ -394,7 +396,7 @@ export const useScreenProtection = (options: ScreenProtectionOptions = {}) => {
         attemptCountRef.current++;
         setIsDevToolsOpen(true);
         setViolationType('devtools');
-        // DevTools tidak perlu countdown karena harus ditutup dulu
+        recordViolation(2);
       } else if (!widthThreshold && !heightThreshold && devToolsOpen) {
         devToolsOpen = false;
         setIsDevToolsOpen(false);
@@ -404,26 +406,23 @@ export const useScreenProtection = (options: ScreenProtectionOptions = {}) => {
       }
     };
 
-    // Kurangi frekuensi check dari 1s menjadi 2s untuk performa lebih baik
     const interval = setInterval(checkDevTools, 2000);
-    checkDevTools(); // Check immediately on mount
+    checkDevTools();
     
     return () => clearInterval(interval);
-  }, [enableDevToolsDetection]);
+  }, [enableDevToolsDetection, recordViolation, violationType]);
 
-  // Prevent drag operations
   useEffect(() => {
     if (!enableDragBlock) return;
 
     const handleDragStart = (e: DragEvent) => {
-      e.preventDefault(); // Always prevent default if blocking is enabled
+      e.preventDefault();
     };
 
     document.addEventListener('dragstart', handleDragStart);
     return () => document.removeEventListener('dragstart', handleDragStart);
-  }, [enableDragBlock]); // Add enableDragBlock to dependency array
+  }, [enableDragBlock]);
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (blurDebounceRef.current) {
@@ -444,11 +443,12 @@ export const useScreenProtection = (options: ScreenProtectionOptions = {}) => {
     isDevToolsOpen,
     isViolation,
     isCoolDownActive,
-    countdown, // Countdown value
-    violationType, // Type of current violation
+    countdown,
+    violationType,
     attemptCount: attemptCountRef.current,
-    showBlackScreen,           // NEW
-    blackScreenReason,         // NEW
-    blackScreenMerk,           // NEW
+    showBlackScreen,
+    blackScreenReason,
+    blackScreenMerk,
+    trustLevel, // Exposed
   };
 };
