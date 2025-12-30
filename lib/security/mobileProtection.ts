@@ -22,9 +22,9 @@ const DEFAULT_CONFIG: GestureConfig = {
   swipeTimeout: 300,
   comboTimeWindow: 1500,
   resizeThreshold: 20,
-  volumeButtonThreshold: 1,
-  powerButtonThreshold: 1 ,
-  rapidScreenChangeThreshold: 1, // NEW: Detect rapid screen captures
+  volumeButtonThreshold: 200,
+  powerButtonThreshold: 500,
+  rapidScreenChangeThreshold: 150, // NEW: Detect rapid screen captures
 };
 
 // EXPANDED MERK-SPECIFIC CONFIGURATION
@@ -102,11 +102,6 @@ export const isMobileDevice = (): boolean => {
 export const isIOS = (): boolean => {
   if (typeof window === 'undefined') return false;
   return /iPhone|iPad|iPod/i.test(navigator.userAgent);
-};
-
-export const isNativeApp = (): boolean => {
-  if (typeof window === 'undefined') return false;
-  return navigator.userAgent.includes('AlfajrApp');
 };
 
 export interface ViolationEvent {
