@@ -1,4 +1,4 @@
-// lib/security/mobileProtection.ts - Visual Viewport Enhanced Version
+// lib/security/mobileProtection.ts - UPDATED VERSION
 
 export interface GestureConfig {
   minMultiTouchCount: number;
@@ -8,6 +8,8 @@ export interface GestureConfig {
   swipeTimeout: number;
   comboTimeWindow: number;
   resizeThreshold: number;
+  volumeButtonThreshold: number; // NEW
+  powerButtonThreshold: number;  // NEW
 }
 
 const DEFAULT_CONFIG: GestureConfig = {
@@ -16,19 +18,67 @@ const DEFAULT_CONFIG: GestureConfig = {
   palmForceThreshold: 1,
   swipeDistanceThreshold: 50,
   swipeTimeout: 300,
-  comboTimeWindow: 1500, // Increased window for better detection
-  resizeThreshold: 20,   // More sensitive to UI bars (Screenshot bar is usually small ~60-100px)
+  comboTimeWindow: 1500,
+  resizeThreshold: 20,
+  volumeButtonThreshold: 200, // Deteksi volume button press dalam 200ms
+  powerButtonThreshold: 500,  // Deteksi power button double click dalam 500ms
 };
 
-export interface ViolationEvent {
-  type: string;
-  timestamp: number;
-  details?: any;
-}
+// MERK-SPECIFIC CONFIGURATION
+const MERK_CONFIGS = {
+  // Samsung OneUI - Smart Capture menggunakan volume down + power
+  SAMSUNG: {
+    resizeThreshold: 80,
+    comboTimeWindow: 800,
+    volumeButtonThreshold: 300,
+  },
+  // Xiaomi MIUI/HyperOS - Biasanya 3 jari swipe down
+  XIAOMI: {
+    minMultiTouchCount: 3,
+    swipeDistanceThreshold: 100, // Swipe lebih panjang
+    palmRadiusThreshold: 40,
+  },
+  // iOS - Side button + volume up
+  IOS: {
+    resizeThreshold: 100,
+    palmRadiusThreshold: 35,
+    comboTimeWindow: 1000,
+    volumeButtonThreshold: 250,
+  },
+  // Pixel Stock Android - Power + volume down
+  PIXEL: {
+    resizeThreshold: 60,
+    minMultiTouchCount: 4,
+    comboTimeWindow: 700,
+  },
+  // Oppo/Realme/OnePlus - 3 jari swipe
+  OPPO: {
+    minMultiTouchCount: 3,
+    swipeDistanceThreshold: 80,
+  },
+  // Vivo - Super screenshot dengan 3 jari
+  VIVO: {
+    minMultiTouchCount: 3,
+    palmRadiusThreshold: 45,
+  },
+};
 
-type ViolationCallback = (event: ViolationEvent) => void;
-
-// --- Utility Functions ---
+// Deteksi merk device dari user agent
+const detectMerk = (): keyof typeof MERK_CONFIGS | 'DEFAULT' => {
+  if (typeof navigator === 'undefined') return 'DEFAULT';
+  const ua = navigator.userAgent.toLowerCase();
+  
+  if (/samsung/i.test(ua)) return 'SAMSUNG';
+  if (/xiaomi|redmi|poco|mi\s/i.test(ua)) return 'XIAOMI';
+  if (/iphone|ipad|ipod/i.test(ua)) return 'IOS';
+  if (/pixel/i.test(ua)) return 'PIXEL';
+  if (/oppo/i.test(ua)) return 'OPPO';
+  if (/vivo/i.test(ua)) return 'VIVO';
+  if (/realme/i.test(ua)) return 'OPPO'; // Realme mirip Oppo
+  if (/oneplus/i.test(ua)) return 'OPPO'; // OnePlus mirip Oppo
+  
+  return 'DEFAULT';
+};
 
 export const isMobileDevice = (): boolean => {
   if (typeof window === 'undefined') return false;
@@ -37,7 +87,7 @@ export const isMobileDevice = (): boolean => {
 
 export const isIOS = (): boolean => {
   if (typeof window === 'undefined') return false;
-  return /iPhone|iPad|Ipod/i.test(navigator.userAgent);
+  return /iPhone|iPad|iPod/i.test(navigator.userAgent);
 };
 
 export const requestDeviceMotionPermission = async (): Promise<boolean> => {
@@ -55,52 +105,262 @@ export const requestDeviceMotionPermission = async (): Promise<boolean> => {
   return true;
 };
 
+export interface ViolationEvent {
+  type: string;
+  timestamp: number;
+  details?: any;
+}
+
+type ViolationCallback = (event: ViolationEvent) => void;
+
 export const initializeMobileProtection = (
   onViolation?: ViolationCallback,
   customConfig?: Partial<GestureConfig>
 ): (() => void) => {
   if (typeof window === 'undefined') return () => {};
 
-  const config = { ...DEFAULT_CONFIG, ...customConfig };
+  // Gunakan config berdasarkan merk
+  const merk = detectMerk();
+  // @ts-ignore
+  const merkConfig = MERK_CONFIGS[merk] || {};
+  const config = { 
+    ...DEFAULT_CONFIG, 
+    ...merkConfig, 
+    ...customConfig 
+  };
   
-  // State
+  // State untuk hardware button detection
   const activePointers = new Map<number, PointerEvent>();
   let initialViewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+  // @ts-ignore
   let lastVisibilityChange = 0;
+  
+  // Hardware button tracking
+  let lastVolumeKeyTime = 0;
+  let lastPowerKeyTime = 0;
+  let volumeKeyCount = 0;
+  let powerKeyCount = 0;
+  // @ts-ignore
+  let lastBlurTime = 0;
 
-  // --- 1. Visual Viewport Detection (The "Screenshot Bar" Trap) ---
-  // When a screenshot is taken, the OS often overlays a bar at the bottom/top.
-  // This changes the 'visualViewport' height, even if 'innerHeight' doesn't change.
+  // --- HARDWARE BUTTON DETECTION ---
+  // Di web, kita bisa mendeteksi volume button melalui:
+  // 1. Event keydown dengan keyCode tertentu (tidak semua browser)
+  // 2. Kombinasi dengan window.blur (saat OS mengambil screenshot)
+  // 3. Perubahan viewport yang spesifik
+
+  const handleKeyDown = (e: KeyboardEvent) => {
+    // Deteksi volume buttons (keyCode 173 = Volume Down, 174 = Volume Up)
+    // Note: Ini hanya bekerja di beberapa browser
+    if (e.keyCode === 173 || e.keyCode === 174) { // Volume buttons
+      const now = Date.now();
+      volumeKeyCount++;
+      
+      // Deteksi rapid volume button presses
+      if (now - lastVolumeKeyTime < config.volumeButtonThreshold) {
+        onViolation?.({
+          type: 'mobile_hardware_button',
+          timestamp: now,
+          details: { 
+            button: 'volume',
+            count: volumeKeyCount,
+            merk 
+          }
+        });
+      }
+      
+      lastVolumeKeyTime = now;
+      
+      // Volume + Power combo detection
+      if (now - lastPowerKeyTime < config.comboTimeWindow) {
+        onViolation?.({
+          type: 'mobile_hardware_combo',
+          timestamp: now,
+          details: { 
+            combo: 'volume_power',
+            merk 
+          }
+        });
+      }
+    }
+    
+    // Deteksi power button (keyCode 142 = Power)
+    // Note: Power button biasanya tidak terdeteksi di browser
+    // Kita menggunakan heuristic berdasarkan timing
+  };
+
+  // --- DOUBLE CLICK POWER DETECTION ---
+  // Di web, kita tidak bisa langsung mendeteksi power button
+  // Tapi kita bisa deteksi pola spesifik:
+  // 1. Quick window.blur (saat power button ditekan)
+  // 2. Rapid visibility changes
+  // 3. Viewport resize tertentu
+
+  const handleWindowBlur = () => {
+    const now = Date.now();
+    lastBlurTime = now;
+    powerKeyCount++;
+    
+    // Deteksi double click power (2x blur cepat)
+    if (now - lastPowerKeyTime < config.powerButtonThreshold) {
+      onViolation?.({
+        type: 'mobile_power_double_click',
+        timestamp: now,
+        details: { 
+          count: powerKeyCount,
+          timeBetween: now - lastPowerKeyTime,
+          merk 
+        }
+      });
+    }
+    
+    lastPowerKeyTime = now;
+    
+    // Blur + Volume combo detection
+    if (now - lastVolumeKeyTime < config.comboTimeWindow) {
+      setTimeout(() => {
+        if (document.hidden) {
+          onViolation?.({
+            type: 'mobile_hardware_combo',
+            timestamp: Date.now(),
+            details: { 
+              combo: 'power_volume',
+              merk 
+            }
+          });
+        }
+      }, 100);
+    }
+  };
+
+  // --- MERK-SPECIFIC GESTURE DETECTION ---
+  
+  const handlePointerMove = (e: PointerEvent) => {
+    if (activePointers.size >= config.minMultiTouchCount) {
+      // Deteksi gesture spesifik merk
+      const pointers = Array.from(activePointers.values());
+      
+      // Samsung: 3 jari swipe down (vertikal)
+      if (merk === 'SAMSUNG') {
+        const startY = pointers[0].clientY;
+        const currentY = e.clientY;
+        const diffY = currentY - startY;
+        
+        if (Math.abs(diffY) > config.swipeDistanceThreshold) {
+          onViolation?.({
+            type: 'mobile_merk_gesture',
+            timestamp: Date.now(),
+            details: { 
+              merk: 'SAMSUNG',
+              gesture: 'three_finger_swipe_down',
+              distance: diffY 
+            }
+          });
+        }
+      }
+      
+      // Xiaomi/Oppo/Vivo: 3 jari swipe down panjang
+      if (['XIAOMI', 'OPPO', 'VIVO'].includes(merk)) {
+        const startY = pointers[0].clientY;
+        const currentY = e.clientY;
+        const diffY = currentY - startY;
+        
+        if (diffY > 150) { // Swipe panjang untuk Xiaomi
+          onViolation?.({
+            type: 'mobile_merk_gesture',
+            timestamp: Date.now(),
+            details: { 
+              merk,
+              gesture: 'three_finger_long_swipe',
+              distance: diffY 
+            }
+          });
+        }
+      }
+    }
+  };
+
+  // Update pointer handlers untuk include merk-specific detection
+  const handlePointerDown = (e: PointerEvent) => {
+    activePointers.set(e.pointerId, e);
+
+    // Multi-Touch Detection dengan threshold merk
+    if (activePointers.size >= config.minMultiTouchCount) {
+      onViolation?.({
+        type: 'mobile_screenshot_gesture',
+        timestamp: Date.now(),
+        details: { 
+          pointerCount: activePointers.size,
+          merk,
+          gesture: `${config.minMultiTouchCount}_finger_touch`
+        }
+      });
+      
+      // Untuk iOS: 3 jari swipe up (screenshot editor)
+      if (merk === 'IOS' && activePointers.size === 3) {
+        setTimeout(() => {
+          onViolation?.({
+            type: 'mobile_ios_screenshot_editor',
+            timestamp: Date.now(),
+            details: { merk: 'IOS' }
+          });
+        }, 500);
+      }
+    }
+  };
+
+  // --- VISUAL VIEWPORT DETECTION PER MERK ---
   
   const handleViewportResize = () => {
     if (!window.visualViewport) return;
 
     const currentHeight = window.visualViewport.height;
     const diff = Math.abs(initialViewportHeight - currentHeight);
-
-    // Filter out:
-    // 1. Tiny changes (< 10px) (Browser chrome hiding/showing on scroll)
-    // 2. Huge changes (> 300px) (Keyboard opening)
-    // Target: The "Screenshot Editor" bar which is usually 50px - 150px
-    if (diff > config.resizeThreshold && diff < 300) {
-       // Check if it's a stable change (not just scrolling)
-       onViolation?.({
-         type: 'mobile_ui_obstruct',
-         timestamp: Date.now(),
-         details: { diff, initial: initialViewportHeight, current: currentHeight }
-       });
+    
+    // Threshold berbeda per merk
+    // @ts-ignore
+    let merkThreshold = config.resizeThreshold;
+    
+    // iOS screenshot editor lebih tinggi
+    if (merk === 'IOS' && diff > 80 && diff < 200) {
+      onViolation?.({
+        type: 'mobile_ui_obstruct',
+        timestamp: Date.now(),
+        details: { 
+          diff, 
+          initial: initialViewportHeight, 
+          current: currentHeight,
+          merk: 'IOS',
+          reason: 'screenshot_editor_bar'
+        }
+      });
+    }
+    
+    // Android screenshot bar biasanya 60-120px
+    else if (['SAMSUNG', 'XIAOMI', 'PIXEL', 'OPPO', 'VIVO'].includes(merk)) {
+      if (diff > 50 && diff < 150) {
+        onViolation?.({
+          type: 'mobile_ui_obstruct',
+          timestamp: Date.now(),
+          details: { 
+            diff, 
+            initial: initialViewportHeight, 
+            current: currentHeight,
+            merk,
+            reason: 'screenshot_toolbar'
+          }
+        });
+      }
     }
 
-    // Update reference if stable for 2 seconds (e.g. user rotated phone)
+    // Update reference
     setTimeout(() => {
-       if (window.visualViewport) initialViewportHeight = window.visualViewport.height;
+      if (window.visualViewport) {
+        initialViewportHeight = window.visualViewport.height;
+      }
     }, 2000);
   };
-
-  // --- 2. Visibility & Blur Heuristic ---
-  // Taking a screenshot often causes a momentary 'blur' or 'visibilityState' toggle
-  // as the OS UI takes focus to save the image.
-
+  
   const handleVisibilityChange = () => {
     const now = Date.now();
     if (document.hidden) {
@@ -123,37 +383,31 @@ export const initializeMobileProtection = (
     }
   };
 
-  const handleWindowBlur = () => {
-     // Blur is less reliable on mobile, but combined with other signals it helps.
-     // We treat it as a "warning" signal.
-  };
+  // --- LISTENERS ---
+  
+  const options: AddEventListenerOptions = { capture: true, passive: false };
+  
+  // Hardware button listeners
+  window.addEventListener('keydown', handleKeyDown, options);
+  window.addEventListener('blur', handleWindowBlur);
+  
+  // Viewport listeners
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', handleViewportResize);
+  } else {
+    window.addEventListener('resize', handleViewportResize);
+  }
 
-  // --- 3. Touch Gesture Analysis ---
+  // Touch/pointer listeners
+  window.addEventListener('pointerdown', handlePointerDown, options);
+  window.addEventListener('pointermove', handlePointerMove, options);
+  window.addEventListener('pointerup', (e) => activePointers.delete(e.pointerId), options);
+  window.addEventListener('pointercancel', (e) => activePointers.delete(e.pointerId), options);
+  
+  // Visibility listeners
+  document.addEventListener('visibilitychange', handleVisibilityChange);
 
-  const handlePointerDown = (e: PointerEvent) => {
-    activePointers.set(e.pointerId, e);
-
-    // Multi-Touch (3+ fingers)
-    if (activePointers.size >= config.minMultiTouchCount) {
-      onViolation?.({
-        type: 'mobile_screenshot_gesture',
-        timestamp: Date.now(),
-        details: { pointerCount: activePointers.size }
-      });
-      activePointers.clear();
-      return;
-    }
-  };
-
-  const handlePointerUp = (e: PointerEvent) => {
-    activePointers.delete(e.pointerId);
-  };
-
-  const handlePointerCancel = (e: PointerEvent) => {
-    activePointers.delete(e.pointerId);
-  };
-
-  // --- 4. CSS Hardening ---
+  // CSS Hardening (sama seperti sebelumnya)
   const style = document.createElement('style');
   style.textContent = `
     body {
@@ -167,7 +421,6 @@ export const initializeMobileProtection = (
       pointer-events: none !important;
       -webkit-user-drag: none !important;
     }
-    /* Hide scrollbars to make screenshots uglier */
     ::-webkit-scrollbar {
       width: 0px;
       background: transparent;
@@ -175,33 +428,23 @@ export const initializeMobileProtection = (
   `;
   document.head.appendChild(style);
 
-  // --- Listeners ---
-  const options: AddEventListenerOptions = { capture: true, passive: false };
-  
-  if (window.visualViewport) {
-    window.visualViewport.addEventListener('resize', handleViewportResize);
-  } else {
-    window.addEventListener('resize', handleViewportResize); // Fallback
-  }
-
-  window.addEventListener('pointerdown', handlePointerDown, options);
-  window.addEventListener('pointerup', handlePointerUp, options);
-  window.addEventListener('pointercancel', handlePointerCancel, options);
-  document.addEventListener('visibilitychange', handleVisibilityChange);
-  window.addEventListener('blur', handleWindowBlur);
-  window.addEventListener('contextmenu', (e) => e.preventDefault(), options);
-
+  // Cleanup function
   return () => {
+    window.removeEventListener('keydown', handleKeyDown, options);
+    window.removeEventListener('blur', handleWindowBlur);
+    
     if (window.visualViewport) {
       window.visualViewport.removeEventListener('resize', handleViewportResize);
     } else {
       window.removeEventListener('resize', handleViewportResize);
     }
+    
     window.removeEventListener('pointerdown', handlePointerDown, options);
-    window.removeEventListener('pointerup', handlePointerUp, options);
-    window.removeEventListener('pointercancel', handlePointerCancel, options);
+    window.removeEventListener('pointermove', handlePointerMove, options);
+    window.removeEventListener('pointerup', (e) => activePointers.delete(e.pointerId), options);
+    window.removeEventListener('pointercancel', (e) => activePointers.delete(e.pointerId), options);
     document.removeEventListener('visibilitychange', handleVisibilityChange);
-    window.removeEventListener('blur', handleWindowBlur);
+    
     if (style.parentNode) style.parentNode.removeChild(style);
   };
 };

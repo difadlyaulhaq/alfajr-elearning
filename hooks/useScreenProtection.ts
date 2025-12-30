@@ -38,6 +38,12 @@ export const useScreenProtection = (options: ScreenProtectionOptions = {}) => {
   const [isCoolDownActive, setIsCoolDownActive] = useState(false);
   const [countdown, setCountdown] = useState(0); // Countdown timer state
   const [violationType, setViolationType] = useState<'screenshot' | 'devtools' | 'blur' | null>(null);
+  
+  // New State for black screen
+  const [showBlackScreen, setShowBlackScreen] = useState(false);
+  const [blackScreenReason, setBlackScreenReason] = useState<string>('');
+  const [blackScreenMerk, setBlackScreenMerk] = useState<string>('');
+
   const attemptCountRef = useRef(0);
   const lastBlurTimeRef = useRef(0);
   const blurDebounceRef = useRef<NodeJS.Timeout | null>(null);
@@ -45,6 +51,34 @@ export const useScreenProtection = (options: ScreenProtectionOptions = {}) => {
   const coolDownTimerRef = useRef<NodeJS.Timeout | null>(null);
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const isMouseInsideRef = useRef(true); // Track if mouse is inside window
+
+  // Function untuk trigger black screen
+  const triggerBlackScreen = useCallback((reason: string, merk: string = '') => {
+    setShowBlackScreen(true);
+    setBlackScreenReason(reason);
+    setBlackScreenMerk(merk);
+    
+    // Auto hide setelah 10 detik
+    setTimeout(() => {
+      setShowBlackScreen(false);
+    }, 10000);
+    
+    // Log ke server
+    fetch('/api/security/log', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'black_screen_triggered',
+        page: window.location.pathname,
+        details: { 
+          reason,
+          merk,
+          userAgent: navigator.userAgent,
+          timestamp: new Date().toISOString()
+        },
+      }),
+    }).catch(() => {});
+  }, []);
 
   // Start countdown timer
   const startCountdown = useCallback((seconds: number) => {
@@ -112,6 +146,11 @@ export const useScreenProtection = (options: ScreenProtectionOptions = {}) => {
         attemptCountRef.current++;
 
         const action = event.type; // Extract type from ViolationEvent
+        const details = event.details || {};
+        const merk = details.merk || 'Unknown';
+
+        // Trigger black screen untuk semua violation
+        triggerBlackScreen(action, merk);
 
         // Handle specific mobile violations
         if (action === 'mobile_screenshot_gesture' || 
@@ -150,7 +189,7 @@ export const useScreenProtection = (options: ScreenProtectionOptions = {}) => {
       
       return cleanup;
     }
-  }, [startCountdown, onScreenshotAttempt]);
+  }, [startCountdown, onScreenshotAttempt, triggerBlackScreen]);
 
   const handleFocus = useCallback(() => {
     if (!enableBlurOnFocusLoss) return;
@@ -252,6 +291,8 @@ export const useScreenProtection = (options: ScreenProtectionOptions = {}) => {
         setCountdown(10);
         startCountdown(10);
         
+        triggerBlackScreen(`keyboard_${e.key}`, 'Desktop');
+
         // Clear clipboard secara agresif
         try {
           navigator.clipboard.writeText('⚠️ Screenshot tidak diizinkan').catch(() => {});
@@ -271,7 +312,7 @@ export const useScreenProtection = (options: ScreenProtectionOptions = {}) => {
       document.removeEventListener('keydown', handleKeyDown, true);
       document.removeEventListener('keyup', handleKeyDown, true);
     };
-  }, [enableKeyboardBlock, enableDevToolsDetection, onScreenshotAttempt]);
+  }, [enableKeyboardBlock, enableDevToolsDetection, onScreenshotAttempt, triggerBlackScreen, startCountdown]);
 
   // Visibility change detection
   useEffect(() => {
@@ -406,5 +447,8 @@ export const useScreenProtection = (options: ScreenProtectionOptions = {}) => {
     countdown, // Countdown value
     violationType, // Type of current violation
     attemptCount: attemptCountRef.current,
+    showBlackScreen,           // NEW
+    blackScreenReason,         // NEW
+    blackScreenMerk,           // NEW
   };
 };
