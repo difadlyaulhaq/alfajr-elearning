@@ -38,6 +38,7 @@ const LoginPage = () => {
           
           // Check if we need to redirect back to the Native App
           // This happens when the user starts login in the App, gets thrown to Chrome, and now needs to go back.
+          /* 
           const isMobileBrowser = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) && !window.location.search.includes('source=pwa');
           
           if (isMobileBrowser) {
@@ -53,6 +54,7 @@ const LoginPage = () => {
              }, 2000);
              return;
           }
+          */
 
           await processWebLogin(token);
         }
