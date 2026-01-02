@@ -2,6 +2,16 @@ import { GoogleAuthProvider, signInWithCredential, signInWithPopup, UserCredenti
 import { auth } from './firebase/config';
 import { FirebaseAuthentication } from '@capacitor-firebase/authentication';
 import { Capacitor } from '@capacitor/core';
+import { Browser } from '@capacitor/browser';
+
+export const signInWithBrowser = async () => {
+  // URL Production Anda
+  const domain = 'https://alfajr-elearning.vercel.app'; 
+  const callbackScheme = 'alfajrelearning';
+  const redirectUrl = `${domain}/login?return_to=${callbackScheme}://auth/callback`;
+  
+  await Browser.open({ url: redirectUrl });
+};
 
 export const nativeSignInWithGoogle = async (): Promise<UserCredential | undefined> => {
   try {
