@@ -1,46 +1,56 @@
-import { GoogleAuthProvider, signInWithPopup, signInWithRedirect, UserCredential } from 'firebase/auth';
+import { GoogleAuthProvider, signInWithCredential, signInWithPopup, UserCredential } from 'firebase/auth';
 import { auth } from './firebase/config';
-import { Browser } from '@capacitor/browser';
+import { FirebaseAuthentication } from '@capacitor-firebase/authentication';
 import { Capacitor } from '@capacitor/core';
-
-// Helper untuk deteksi mobile
-const isMobile = () => {
-  if (typeof window === 'undefined') return false;
-  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-};
+import { Browser } from '@capacitor/browser';
 
 export const signInWithBrowser = async () => {
-  // URL Production
+  // URL Production Anda
   const domain = 'https://alfajr-elearning.vercel.app'; 
-  
   const callbackScheme = 'alfajrelearning';
   const redirectUrl = `${domain}/login?return_to=${callbackScheme}://auth/callback`;
   
   await Browser.open({ url: redirectUrl });
 };
 
-export const nativeSignInWithGoogle = async (): Promise<UserCredential | void> => {
-  if (Capacitor.isNativePlatform()) {
-      // Native App: Use Browser Flow to avoid Webview issues
-      await signInWithBrowser();
-      return;
-  }
-
-  const provider = new GoogleAuthProvider();
-  provider.setCustomParameters({ prompt: 'select_account' });
-
+export const nativeSignInWithGoogle = async (): Promise<UserCredential | undefined> => {
   try {
-    if (isMobile()) {
-      await signInWithRedirect(auth, provider);
-      return;
-    } 
-    return await signInWithPopup(auth, provider);
-  } catch (error: any) {
-    console.error("Login Error:", error);
-    if (error.code === 'auth/popup-blocked') {
-      await signInWithRedirect(auth, provider);
-      return;
+    if (Capacitor.isNativePlatform()) {
+      // --- NATIVE (Android/iOS) ---
+      // Menggunakan plugin @capacitor-firebase/authentication untuk bypass batasan WebView
+      
+      const result = await FirebaseAuthentication.signInWithGoogle();
+      
+      // Ambil ID Token dari hasil login native
+      const idToken = result.credential?.idToken;
+      
+      if (!idToken) {
+        throw new Error('No ID token found in native Google Sign-In result');
+      }
+
+      // Buat credential Firebase dari ID token
+      const credential = GoogleAuthProvider.credential(idToken);
+      
+      // Sign in ke Firebase JS SDK menggunakan credential tersebut
+      // Ini penting agar state auth tersinkronisasi di JS layer (context/AuthContext)
+      return await signInWithCredential(auth, credential);
+
+    } else {
+      // --- WEB (Browser/PWA) ---
+      // Gunakan popup standar
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: 'select_account' });
+      
+      return await signInWithPopup(auth, provider);
     }
+  } catch (error: any) {
+    console.error("Google Sign-In Error:", error);
+    
+    // Handle user cancellation gracefully
+    if (error.code === 'auth/popup-closed-by-user' || error.message?.includes('canceled')) {
+      return undefined;
+    }
+    
     throw error;
   }
 };

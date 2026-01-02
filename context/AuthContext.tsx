@@ -1,9 +1,8 @@
-
 'use client';
 
 import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
 import { logoutUser } from '@/lib/firebase/auth';
-import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { onAuthStateChanged, signOut, signInWithCustomToken } from 'firebase/auth';
 import { auth } from '@/lib/firebase/config';
 import { App } from '@capacitor/app';
 import { useRouter } from 'next/navigation';
@@ -38,8 +37,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     let appListenerHandle: any;
 
+    // Listen for Deep Links (AppUrlOpen)
+    // Format: alfajrelearning://auth/callback?token=XYZ
     const setupDeepLinks = async () => {
       appListenerHandle = await App.addListener('appUrlOpen', async (data) => {
+        console.log('App opened with URL:', data.url);
+        
         if (data.url.includes('alfajrelearning://auth/callback')) {
           const url = new URL(data.url);
           const token = url.searchParams.get('token');
@@ -47,6 +50,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           if (token) {
             setIsLoading(true);
             try {
+              // Option 1: SignIn with Custom Token (if backend generates custom token)
+              // But here we likely got an ID Token from Google provider.
+              // ID Tokens cannot be used with signInWithCustomToken directly.
+              // Instead, we just need to set the session on our backend
+              
               const loginRes = await fetch('/api/auth/session', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -56,6 +64,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               const loginData = await loginRes.json();
               if (loginRes.ok && loginData.success) {
                 setUser(loginData.user);
+                // Also trigger firebase sign-in if possible, but might be tricky with just ID token
+                // If we don't sign in to firebase SDK, onAuthStateChanged might fail later?
+                // Actually, our app relies on the Session API for 'user' state, so this might be enough.
                 router.replace('/learning/dashboard');
               }
             } catch (e) {

@@ -1,15 +1,15 @@
-// app/(auth)/login/page.tsx
 'use client';
-import React, { useState, useEffect } from 'react';
-import { Mail, Lock, Eye, EyeOff, Loader, Shield, Users, ArrowLeft, Smartphone } from 'lucide-react';
-import { signInWithEmailAndPassword, getRedirectResult } from 'firebase/auth';
+import React, { useState, useEffect, Suspense } from 'react';
+import { Mail, Lock, Eye, EyeOff, Loader, Shield, Users, Smartphone, Globe } from 'lucide-react';
+import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '@/lib/firebase/config';
 import { useRouter, useSearchParams } from 'next/navigation';
 import DownloadAppButton from '@/components/shared/DownloadAppButton';
-import { nativeSignInWithGoogle } from '@/lib/native-auth';
 import { useAuth } from '@/context/AuthContext';
+import { nativeSignInWithGoogle, signInWithBrowser } from '@/lib/native-auth';
+import { Capacitor } from '@capacitor/core';
 
-const LoginPage = () => {
+const LoginForm = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -17,68 +17,40 @@ const LoginPage = () => {
   const [error, setError] = useState('');
   const [showRoleChoice, setShowRoleChoice] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [isNative, setIsNative] = useState(false);
+  
   const router = useRouter();
   const searchParams = useSearchParams();
   const returnTo = searchParams.get('return_to');
+  
   const { isAuthenticated, isLoading: isAuthLoading, user } = useAuth();
 
   // Auto Redirect if already logged in
   useEffect(() => {
+    // Jika ada returnTo, kita tidak auto-redirect di sini karena kita butuh token.
+    // User harus login ulang atau kita perlu ambil token dari session (agak tricky).
+    // Untuk keamanan, biarkan user login ulang jika flow deep link.
     if (!returnTo && !isAuthLoading && isAuthenticated && user) {
        router.replace('/learning/dashboard');
     }
   }, [isAuthLoading, isAuthenticated, user, router, returnTo]);
 
-  // Handle Redirect Result (Fallback Login Web)
+  // Deteksi ukuran layar & platform
   useEffect(() => {
-    const handleRedirectLogin = async () => {
-      try {
-        const result = await getRedirectResult(auth);
-        if (result) {
-          setIsLoading(true);
-          const token = await result.user.getIdToken();
-          
-          const response = await fetch('/api/auth/session', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ token }),
-          });
-
-          const data = await response.json();
-          if (response.ok && data.success) {
-            const userRole = data.user?.role?.trim().toLowerCase();
-            
-            // Cek return_to dari URL atau Session Storage
-            const storedReturnTo = sessionStorage.getItem('auth_return_to');
-            const finalReturnTo = returnTo || storedReturnTo;
-            
-            // Bersihkan session storage
-            sessionStorage.removeItem('auth_return_to');
-
-            handleRedirect(userRole, token, finalReturnTo);
-          } else {
-            setError(data.error || 'Login gagal setelah redirect.');
-            setIsLoading(false);
-          }
-        }
-      } catch (error: any) {
-        console.error("Redirect Login Error:", error);
-        setError(getErrorMessage(error.code));
-        setIsLoading(false);
-      }
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
     };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    setIsNative(Capacitor.isNativePlatform());
 
-    handleRedirectLogin();
-  }, [returnTo]); // Add returnTo dependency
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
-  // ... (existing code) ...
-
-  const handleRedirect = (role: string, token?: string, targetReturnTo?: string | null) => {
-    // Prioritas: parameter fungsi > variabel state returnTo
-    const effectiveReturnTo = targetReturnTo || returnTo;
-
-    if (effectiveReturnTo && token) {
-      window.location.href = `${effectiveReturnTo}?token=${token}`;
+  const handleRedirect = (role: string, token?: string) => {
+    if (returnTo && token) {
+      window.location.href = `${returnTo}?token=${token}`;
       return;
     }
 
@@ -133,10 +105,10 @@ const LoginPage = () => {
     if (returnTo) sessionStorage.setItem('auth_return_to', returnTo);
 
     try {
-      // ... rest of handleGoogleSSO ...
       const userCredential = await nativeSignInWithGoogle();
       
       if (!userCredential || !userCredential.user) {
+        setIsLoading(false);
         return;
       }
 
@@ -161,6 +133,14 @@ const LoginPage = () => {
       console.error('Google SSO error:', error);
       setError(getErrorMessage(error.code));
       setIsLoading(false);
+    }
+  };
+  
+  const handleWebLogin = async () => {
+    try {
+        await signInWithBrowser();
+    } catch (e) {
+        console.error(e);
     }
   };
 
@@ -200,19 +180,6 @@ const LoginPage = () => {
           }}></div>
         </div>
 
-        {/* Floating Logo Top Mobile */}
-        {isMobile && (
-          <div className="absolute top-4 left-4">
-            {/* <button 
-              onClick={() => router.push('/')}
-              className="flex items-center gap-2 text-white/70 hover:text-white transition touch-button"
-            >
-              <ArrowLeft size={20} />
-              <span className="text-sm">Kembali</span>
-            </button> */}
-          </div>
-        )}
-
         <div className="relative w-full max-w-md mx-auto h-screen sm:h-auto flex flex-col justify-center">
           {/* Mobile-Specific Header */}
           <div className="sm:hidden flex flex-col items-center justify-center pt-12 pb-6 px-4">
@@ -230,7 +197,11 @@ const LoginPage = () => {
               Silahkan Login Dengan Akun Pegawai Alfajr Anda
             </p>
             <div className="mt-6 w-full max-w-[200px]">
-              <DownloadAppButton variant="white-outline" className="w-full text-xs py-2.5" />
+              <DownloadAppButton 
+                variant="white-outline" 
+                className="w-full text-xs py-2.5" 
+                apkUrl="/Alfajr-elearning.apk"
+              />
             </div>
           </div>
 
@@ -242,7 +213,11 @@ const LoginPage = () => {
             <h1 className="text-3xl font-bold text-white mb-2">Alfajr E-learning</h1>
             <p className="text-gray-400 text-sm mt-2">Silahkan Login Dengan Akun Pegawai Alfajr Anda</p>
             <div className="mt-4 flex justify-center">
-              <DownloadAppButton variant="white-outline" className="text-sm py-2 px-6" />
+              <DownloadAppButton 
+                variant="white-outline" 
+                className="text-sm py-2 px-6" 
+                apkUrl="/Alfajr-elearning.apk"
+              />
             </div>
           </div>
 
@@ -310,27 +285,6 @@ const LoginPage = () => {
                   </div>
                 </div>
 
-                {/* Remember Me & Forgot Password */}
-                <div className="flex items-center justify-between">
-                  <label className="flex items-center space-x-2 cursor-pointer">
-                    <input 
-                      type="checkbox" 
-                      disabled={isLoading}
-                      className="w-4 h-4 text-[#C5A059] rounded focus:ring-[#C5A059] border-gray-300 disabled:opacity-50"
-                    />
-                    <span className="text-xs sm:text-sm text-gray-600">
-                      Ingat saya
-                    </span>
-                  </label>
-                  <button 
-                    type="button" 
-                    className="text-xs sm:text-sm text-[#C5A059] hover:text-[#B08F4A] font-semibold disabled:opacity-50"
-                    disabled={isLoading}
-                  >
-                    Lupa password?
-                  </button>
-                </div>
-
                 {/* Login Button */}
                 <button 
                   type="submit" 
@@ -380,6 +334,20 @@ const LoginPage = () => {
                     </>
                   )}
                 </button>
+                
+                {/* Fallback Browser Login Button for Native */}
+                {isNative && !returnTo && (
+                  <button 
+                    type="button" 
+                    onClick={handleWebLogin} 
+                    disabled={isLoading}
+                    className="w-full mt-3 flex items-center justify-center space-x-3 bg-white border-2 border-gray-300 text-gray-700 font-semibold py-3 rounded-lg hover:bg-gray-50 transition-all disabled:opacity-50 touch-button"
+                  >
+                     <Globe className="text-gray-500" size={20} />
+                     <span className="text-sm">Login via Browser</span>
+                  </button>
+                )}
+
               </form>
             </div>
 
@@ -409,7 +377,7 @@ const LoginPage = () => {
         </div>
       </div>
 
-      {/* Modal Pilihan Role - Mobile Optimized */}
+      {/* Modal Pilihan Role */}
       {showRoleChoice && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className={`
@@ -445,20 +413,19 @@ const LoginPage = () => {
                 Buka sebagai Pegawai
               </button>
             </div>
-
-            {isMobile && (
-              <div className="mt-6 pt-4 border-t border-gray-200">
-                <div className="flex items-center justify-center gap-2 text-gray-500 text-[10px]">
-                  <Smartphone size={12} />
-                  <span>Gunakan dasbor admin di desktop untuk pengalaman terbaik</span>
-                </div>
-              </div>
-            )}
           </div>
         </div>
       )}
     </>
   );
 };
+
+const LoginPage = () => {
+    return (
+        <Suspense fallback={<div className="min-h-screen bg-black flex items-center justify-center"><Loader className="animate-spin text-[#C5A059]" /></div>}>
+            <LoginForm />
+        </Suspense>
+    );
+}
 
 export default LoginPage;
