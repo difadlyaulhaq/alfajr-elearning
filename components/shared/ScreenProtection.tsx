@@ -137,6 +137,12 @@ export const ScreenProtection: React.FC<ScreenProtectionProps> = ({
     };
   }, []);
 
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   return (
     <>
       <style jsx global>{`
@@ -359,7 +365,7 @@ export const ScreenProtection: React.FC<ScreenProtectionProps> = ({
         {/* Main Content */}
         {children}
 
-        {ReactDOM.createPortal(
+        {mounted && ReactDOM.createPortal(
           <>
           </>,
           document.body
