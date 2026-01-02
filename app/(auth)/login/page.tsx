@@ -36,7 +36,35 @@ const LoginPage = () => {
           setIsLoading(true);
           const token = await result.user.getIdToken();
           
-          const response = await fetch('/api/auth/session', {
+          // Check if we need to redirect back to the Native App
+          // This happens when the user starts login in the App, gets thrown to Chrome, and now needs to go back.
+          const isMobileBrowser = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) && !window.location.search.includes('source=pwa');
+          
+          if (isMobileBrowser) {
+             console.log("Redirecting back to app...");
+             // Construct Deep Link
+             const appScheme = `alfajrelearning://auth/callback?token=${token}`;
+             window.location.href = appScheme;
+             
+             // Fallback: If app doesn't open (not installed?), continue with web login
+             // We set a small timeout to allow the deep link to fire
+             setTimeout(async () => {
+                await processWebLogin(token);
+             }, 2000);
+             return;
+          }
+
+          await processWebLogin(token);
+        }
+      } catch (error: any) {
+        console.error("Redirect Login Error:", error);
+        setError(getErrorMessage(error.code));
+        setIsLoading(false);
+      }
+    };
+
+    const processWebLogin = async (token: string) => {
+        const response = await fetch('/api/auth/session', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ token }),
@@ -50,12 +78,6 @@ const LoginPage = () => {
             setError(data.error || 'Login gagal setelah redirect.');
             setIsLoading(false);
           }
-        }
-      } catch (error: any) {
-        console.error("Redirect Login Error:", error);
-        setError(getErrorMessage(error.code));
-        setIsLoading(false);
-      }
     };
 
     handleRedirectLogin();
@@ -215,7 +237,11 @@ const LoginPage = () => {
               Silahkan Login Dengan Akun Pegawai Alfajr Anda
             </p>
             <div className="mt-6 w-full max-w-[200px]">
-              <DownloadAppButton variant="white-outline" className="w-full text-xs py-2.5" />
+              <DownloadAppButton 
+                variant="white-outline" 
+                className="w-full text-xs py-2.5" 
+                apkUrl="/Alfajr-elearning.apk"
+              />
             </div>
           </div>
 
@@ -227,7 +253,11 @@ const LoginPage = () => {
             <h1 className="text-3xl font-bold text-white mb-2">Alfajr E-learning</h1>
             <p className="text-gray-400 text-sm mt-2">Silahkan Login Dengan Akun Pegawai Alfajr Anda</p>
             <div className="mt-4 flex justify-center">
-              <DownloadAppButton variant="white-outline" className="text-sm py-2 px-6" />
+              <DownloadAppButton 
+                variant="white-outline" 
+                className="text-sm py-2 px-6" 
+                apkUrl="/Alfajr-elearning.apk"
+              />
             </div>
           </div>
 

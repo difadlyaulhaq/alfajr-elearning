@@ -3,6 +3,7 @@
 import React from 'react';
 import { Menu } from 'lucide-react';
 import Image from 'next/image';
+import DownloadAppButton from '../shared/DownloadAppButton';
 
 interface MobileHeaderProps {
   onMenuClick: () => void;
@@ -16,12 +17,20 @@ const MobileHeader: React.FC<MobileHeaderProps> = ({ onMenuClick }) => {
           {/* <Image src="/logo-alfajr.png" alt="Alfajr Logo" width={32} height={32} /> */}
           <span className="font-bold text-lg text-black">E-Learning</span>
         </div>
-        <button
-          onClick={onMenuClick}
-          className="p-2 text-black"
-        >
-          <Menu size={24} />
-        </button>
+        <div className="flex items-center gap-2">
+          <DownloadAppButton 
+            variant="outline" 
+            text="App" 
+            apkUrl="/Alfajr-elearning.apk" 
+            className="h-9 px-3 text-xs"
+          />
+          <button
+            onClick={onMenuClick}
+            className="p-2 text-black"
+          >
+            <Menu size={24} />
+          </button>
+        </div>
       </div>
     </div>
   );

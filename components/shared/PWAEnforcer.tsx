@@ -29,6 +29,11 @@ export default function PWAEnforcer({ children }: { children: React.ReactNode })
     return <>{children}</>;
   }
 
+  // ALLOW LOGIN PAGE to load so we can process Firebase Redirects and deep link back to app
+  if (typeof window !== 'undefined' && window.location.pathname === '/login') {
+    return <>{children}</>;
+  }
+
   // LOGIC: If Mobile AND NOT Native App, Block access.
   // This forces users to use the APK for security.
   if (isMobile && !isNative) {
@@ -65,7 +70,7 @@ export default function PWAEnforcer({ children }: { children: React.ReactNode })
              variant="primary" 
              className="w-full py-4 text-lg font-bold shadow-xl shadow-[#C5A059]/20" 
              text="Download Aplikasi Android"
-             apkUrl="/app-release.apk"
+             apkUrl="/Alfajr-elearning.apk"
            /> 
            
            <p className="text-[11px] text-gray-400">
