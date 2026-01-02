@@ -5,9 +5,7 @@ const config: CapacitorConfig = {
   appName: 'Alfajr E-Learning',
   webDir: 'public',
   server: {
-    // ⚠️ PENTING: Ganti URL di bawah ini dengan domain Vercel/Web Anda yang sudah deploy!
-    // Contoh: 'https://alfajr-elearning.vercel.app'
-    // Jangan gunakan 192.168.x.x untuk production APK.
+    // ⚠️ PRODUCTION MODE: Menggunakan domain Vercel
     url: 'https://alfajr-elearning.vercel.app/', 
     
     cleartext: true,

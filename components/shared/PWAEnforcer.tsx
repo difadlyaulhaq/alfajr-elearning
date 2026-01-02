@@ -31,7 +31,11 @@ export default function PWAEnforcer({ children }: { children: React.ReactNode })
 
   // LOGIC: If Mobile AND NOT Native App, Block access.
   // This forces users to use the APK for security.
-  if (isMobile && !isNative) {
+  // EXCEPTION: Allow login page and auth callbacks to support "Login with Browser" flow.
+  const isLoginPage = typeof window !== 'undefined' && window.location.pathname.startsWith('/login');
+  const isAuthFlow = typeof window !== 'undefined' && window.location.search.includes('return_to');
+
+  if (isMobile && !isNative && !isLoginPage && !isAuthFlow) {
     return (
       <div className="fixed inset-0 bg-white z-[99999] flex flex-col items-center justify-center p-6 text-center">
         <div className="mb-8">

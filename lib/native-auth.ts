@@ -1,5 +1,7 @@
 import { GoogleAuthProvider, signInWithPopup, signInWithRedirect, UserCredential } from 'firebase/auth';
 import { auth } from './firebase/config';
+import { Browser } from '@capacitor/browser';
+import { Capacitor } from '@capacitor/core';
 
 // Helper untuk deteksi mobile
 const isMobile = () => {
@@ -7,37 +9,38 @@ const isMobile = () => {
   return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 };
 
-export const nativeSignInWithGoogle = async (): Promise<UserCredential | void> => {
-  const provider = new GoogleAuthProvider();
+export const signInWithBrowser = async () => {
+  // URL Production
+  const domain = 'https://alfajr-elearning.vercel.app'; 
   
-  // Tambahkan prompt select_account agar user bisa ganti akun
-  provider.setCustomParameters({
-    prompt: 'select_account'
-  });
+  const callbackScheme = 'alfajrelearning';
+  const redirectUrl = `${domain}/login?return_to=${callbackScheme}://auth/callback`;
+  
+  await Browser.open({ url: redirectUrl });
+};
+
+export const nativeSignInWithGoogle = async (): Promise<UserCredential | void> => {
+  if (Capacitor.isNativePlatform()) {
+      // Native App: Use Browser Flow to avoid Webview issues
+      await signInWithBrowser();
+      return;
+  }
+
+  const provider = new GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: 'select_account' });
 
   try {
-    // Jika di Mobile (baik itu Web Browser HP atau Native App WebView)
-    // Kita gunakan Redirect karena Popup sering diblokir di lingkungan mobile
     if (isMobile()) {
-      console.log("Mobile detected, using signInWithRedirect...");
       await signInWithRedirect(auth, provider);
-      return; // Fungsi akan berhenti di sini karena halaman akan pindah/reload
+      return;
     } 
-    
-    // Jika di Desktop, gunakan Popup (UX lebih bagus)
-    console.log("Desktop detected, using signInWithPopup...");
     return await signInWithPopup(auth, provider);
-    
   } catch (error: any) {
     console.error("Login Error:", error);
-    
-    // Fallback terakhir jika Popup gagal
     if (error.code === 'auth/popup-blocked') {
       await signInWithRedirect(auth, provider);
       return;
     }
-    
-    alert(`Gagal login: ${error.message}`);
     throw error;
   }
 };

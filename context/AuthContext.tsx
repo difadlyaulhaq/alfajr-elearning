@@ -5,6 +5,8 @@ import React, { createContext, useState, useEffect, useContext, ReactNode } from
 import { logoutUser } from '@/lib/firebase/auth';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase/config';
+import { App } from '@capacitor/app';
+import { useRouter } from 'next/navigation';
 
 // --- Tipe Data ---
 interface User {
@@ -31,8 +33,43 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const router = useRouter();
 
   useEffect(() => {
+    let appListenerHandle: any;
+
+    const setupDeepLinks = async () => {
+      appListenerHandle = await App.addListener('appUrlOpen', async (data) => {
+        if (data.url.includes('alfajrelearning://auth/callback')) {
+          const url = new URL(data.url);
+          const token = url.searchParams.get('token');
+          
+          if (token) {
+            setIsLoading(true);
+            try {
+              const loginRes = await fetch('/api/auth/session', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token }),
+              });
+              
+              const loginData = await loginRes.json();
+              if (loginRes.ok && loginData.success) {
+                setUser(loginData.user);
+                router.replace('/learning/dashboard');
+              }
+            } catch (e) {
+              console.error("Deep link auth error", e);
+            } finally {
+              setIsLoading(false);
+            }
+          }
+        }
+      });
+    };
+
+    setupDeepLinks();
+
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       try {
         if (firebaseUser) {
@@ -76,7 +113,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+      if (appListenerHandle) {
+        appListenerHandle.remove();
+      }
+    };
   }, []);
 
   const logout = async () => {
@@ -93,7 +135,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     </AuthContext.Provider>
   );
 };
-
 // --- Buat Hook ---
 export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);

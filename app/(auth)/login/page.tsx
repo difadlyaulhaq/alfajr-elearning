@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Mail, Lock, Eye, EyeOff, Loader, Shield, Users, ArrowLeft, Smartphone } from 'lucide-react';
 import { signInWithEmailAndPassword, getRedirectResult } from 'firebase/auth';
 import { auth } from '@/lib/firebase/config';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import DownloadAppButton from '@/components/shared/DownloadAppButton';
 import { nativeSignInWithGoogle } from '@/lib/native-auth';
 import { useAuth } from '@/context/AuthContext';
@@ -18,14 +18,16 @@ const LoginPage = () => {
   const [showRoleChoice, setShowRoleChoice] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const returnTo = searchParams.get('return_to');
   const { isAuthenticated, isLoading: isAuthLoading, user } = useAuth();
 
   // Auto Redirect if already logged in
   useEffect(() => {
-    if (!isAuthLoading && isAuthenticated && user) {
+    if (!returnTo && !isAuthLoading && isAuthenticated && user) {
        router.replace('/learning/dashboard');
     }
-  }, [isAuthLoading, isAuthenticated, user, router]);
+  }, [isAuthLoading, isAuthenticated, user, router, returnTo]);
 
   // Handle Redirect Result (Fallback Login Web)
   useEffect(() => {
@@ -45,7 +47,15 @@ const LoginPage = () => {
           const data = await response.json();
           if (response.ok && data.success) {
             const userRole = data.user?.role?.trim().toLowerCase();
-            handleRedirect(userRole);
+            
+            // Cek return_to dari URL atau Session Storage
+            const storedReturnTo = sessionStorage.getItem('auth_return_to');
+            const finalReturnTo = returnTo || storedReturnTo;
+            
+            // Bersihkan session storage
+            sessionStorage.removeItem('auth_return_to');
+
+            handleRedirect(userRole, token, finalReturnTo);
           } else {
             setError(data.error || 'Login gagal setelah redirect.');
             setIsLoading(false);
@@ -59,20 +69,19 @@ const LoginPage = () => {
     };
 
     handleRedirectLogin();
-  }, []);
+  }, [returnTo]); // Add returnTo dependency
 
-  // Deteksi ukuran layar
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-    
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
+  // ... (existing code) ...
 
-  const handleRedirect = (role: string) => {
+  const handleRedirect = (role: string, token?: string, targetReturnTo?: string | null) => {
+    // Prioritas: parameter fungsi > variabel state returnTo
+    const effectiveReturnTo = targetReturnTo || returnTo;
+
+    if (effectiveReturnTo && token) {
+      window.location.href = `${effectiveReturnTo}?token=${token}`;
+      return;
+    }
+
     if (role === 'admin') {
       setShowRoleChoice(true);
     } else {
@@ -84,9 +93,13 @@ const LoginPage = () => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
+    
+    // Simpan return_to jika ada (untuk jaga-jaga)
+    if (returnTo) sessionStorage.setItem('auth_return_to', returnTo);
 
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      // ... rest of handleLogin ...
       const token = await userCredential.user.getIdToken();
       
       const response = await fetch('/api/auth/session', {
@@ -99,15 +112,16 @@ const LoginPage = () => {
 
       if (response.ok && result.success) {
         const userRole = result.user?.role?.trim().toLowerCase();
-        handleRedirect(userRole);
+        handleRedirect(userRole, token);
       } else {
         setError(result.error || 'Login gagal. Silakan coba lagi.');
         setIsLoading(false);
       }
     } catch (error: any) {
-      console.error('Login error:', error);
-      setError(getErrorMessage(error.code));
-      setIsLoading(false);
+       // ... error handling
+       console.error('Login error:', error);
+       setError(getErrorMessage(error.code));
+       setIsLoading(false);
     }
   };
 
@@ -115,13 +129,14 @@ const LoginPage = () => {
     setIsLoading(true);
     setError('');
 
+    // Simpan return_to sebelum redirect
+    if (returnTo) sessionStorage.setItem('auth_return_to', returnTo);
+
     try {
-      // Menggunakan helper custom untuk support Native (Android/iOS) & Web
-      // Import ini harus ditambahkan di atas: import { nativeSignInWithGoogle } from '@/lib/native-auth';
+      // ... rest of handleGoogleSSO ...
       const userCredential = await nativeSignInWithGoogle();
       
       if (!userCredential || !userCredential.user) {
-        // Jika void, berarti sedang redirect atau user cancel
         return;
       }
 
@@ -137,7 +152,7 @@ const LoginPage = () => {
 
       if (response.ok && result.success) {
         const userRole = result.user?.role?.trim().toLowerCase();
-        handleRedirect(userRole);
+        handleRedirect(userRole, token);
       } else {
         setError(result.error || 'SSO login gagal.');
         setIsLoading(false);
