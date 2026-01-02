@@ -1,13 +1,12 @@
-// app/(auth)/login/page.tsx
 'use client';
 import React, { useState, useEffect } from 'react';
-import { Mail, Lock, Eye, EyeOff, Loader, Shield, Users, ArrowLeft, Smartphone } from 'lucide-react';
-import { signInWithEmailAndPassword, getRedirectResult } from 'firebase/auth';
+import { Mail, Lock, Eye, EyeOff, Loader, Shield, Users, Smartphone } from 'lucide-react';
+import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '@/lib/firebase/config';
 import { useRouter } from 'next/navigation';
 import DownloadAppButton from '@/components/shared/DownloadAppButton';
-import { nativeSignInWithGoogle } from '@/lib/native-auth';
 import { useAuth } from '@/context/AuthContext';
+import { nativeSignInWithGoogle } from '@/lib/native-auth';
 
 const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -26,64 +25,6 @@ const LoginPage = () => {
        router.replace('/learning/dashboard');
     }
   }, [isAuthLoading, isAuthenticated, user, router]);
-
-  // Handle Redirect Result (Fallback Login Web)
-  useEffect(() => {
-    const handleRedirectLogin = async () => {
-      try {
-        const result = await getRedirectResult(auth);
-        if (result) {
-          setIsLoading(true);
-          const token = await result.user.getIdToken();
-          
-          // Check if we need to redirect back to the Native App
-          // This happens when the user starts login in the App, gets thrown to Chrome, and now needs to go back.
-          /* 
-          const isMobileBrowser = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) && !window.location.search.includes('source=pwa');
-          
-          if (isMobileBrowser) {
-             console.log("Redirecting back to app...");
-             // Construct Deep Link
-             const appScheme = `alfajrelearning://auth/callback?token=${token}`;
-             window.location.href = appScheme;
-             
-             // Fallback: If app doesn't open (not installed?), continue with web login
-             // We set a small timeout to allow the deep link to fire
-             setTimeout(async () => {
-                await processWebLogin(token);
-             }, 2000);
-             return;
-          }
-          */
-
-          await processWebLogin(token);
-        }
-      } catch (error: any) {
-        console.error("Redirect Login Error:", error);
-        setError(getErrorMessage(error.code));
-        setIsLoading(false);
-      }
-    };
-
-    const processWebLogin = async (token: string) => {
-        const response = await fetch('/api/auth/session', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ token }),
-          });
-
-          const data = await response.json();
-          if (response.ok && data.success) {
-            const userRole = data.user?.role?.trim().toLowerCase();
-            handleRedirect(userRole);
-          } else {
-            setError(data.error || 'Login gagal setelah redirect.');
-            setIsLoading(false);
-          }
-    };
-
-    handleRedirectLogin();
-  }, []);
 
   // Deteksi ukuran layar
   useEffect(() => {
@@ -140,12 +81,9 @@ const LoginPage = () => {
     setError('');
 
     try {
-      // Menggunakan helper custom untuk support Native (Android/iOS) & Web
-      // Import ini harus ditambahkan di atas: import { nativeSignInWithGoogle } from '@/lib/native-auth';
       const userCredential = await nativeSignInWithGoogle();
       
       if (!userCredential || !userCredential.user) {
-        // Jika void, berarti sedang redirect atau user cancel
         return;
       }
 
@@ -325,27 +263,6 @@ const LoginPage = () => {
                       {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                     </button>
                   </div>
-                </div>
-
-                {/* Remember Me & Forgot Password */}
-                <div className="flex items-center justify-between">
-                  <label className="flex items-center space-x-2 cursor-pointer">
-                    <input 
-                      type="checkbox" 
-                      disabled={isLoading}
-                      className="w-4 h-4 text-[#C5A059] rounded focus:ring-[#C5A059] border-gray-300 disabled:opacity-50"
-                    />
-                    <span className="text-xs sm:text-sm text-gray-600">
-                      Ingat saya
-                    </span>
-                  </label>
-                  <button 
-                    type="button" 
-                    className="text-xs sm:text-sm text-[#C5A059] hover:text-[#B08F4A] font-semibold disabled:opacity-50"
-                    disabled={isLoading}
-                  >
-                    Lupa password?
-                  </button>
                 </div>
 
                 {/* Login Button */}
