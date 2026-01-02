@@ -1,0 +1,14 @@
+[
+	{
+		"pkg": "@capacitor-community/privacy-screen",
+		"classpath": "com.getcapacitor.plugin.privacyscreen.PrivacyScreenPlugin"
+	},
+	{
+		"pkg": "@capacitor-firebase/authentication",
+		"classpath": "io.capawesome.capacitorjs.plugins.firebase.authentication.FirebaseAuthenticationPlugin"
+	},
+	{
+		"pkg": "@capacitor/splash-screen",
+		"classpath": "com.capacitorjs.plugins.splashscreen.SplashScreenPlugin"
+	}
+]
