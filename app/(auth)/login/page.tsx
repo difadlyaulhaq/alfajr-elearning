@@ -200,7 +200,7 @@ const LoginForm = () => {
               <DownloadAppButton 
                 variant="white-outline" 
                 className="w-full text-xs py-2.5" 
-                apkUrl="/Alfajr-elearning.apk"
+                apkUrl="/api/download"
               />
             </div>
           </div>
@@ -216,7 +216,7 @@ const LoginForm = () => {
               <DownloadAppButton 
                 variant="white-outline" 
                 className="text-sm py-2 px-6" 
-                apkUrl="/Alfajr-elearning.apk"
+                apkUrl="/api/download"
               />
             </div>
           </div>

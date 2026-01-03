@@ -48,12 +48,8 @@ export default function DownloadAppButton({
   const handleInstallClick = async () => {
     // Priority 1: Direct APK Download (Android)
     if (apkUrl && !isIOS) {
-      const link = document.createElement('a');
-      link.href = apkUrl;
-      link.download = 'Alfajr-Learning.apk';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      // Gunakan API route untuk memaksa download APK dan menghindari cache/HTML issue
+      window.location.href = '/api/download';
       return;
     }
 

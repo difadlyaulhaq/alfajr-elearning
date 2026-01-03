@@ -74,7 +74,7 @@ export default function PWAEnforcer({ children }: { children: React.ReactNode })
              variant="primary" 
              className="w-full py-4 text-lg font-bold shadow-xl shadow-[#C5A059]/20" 
              text="Download Aplikasi Android"
-             apkUrl="/Alfajr-elearning.apk"
+             apkUrl="/api/download"
            /> 
            
            <p className="text-[11px] text-gray-400">

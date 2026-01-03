@@ -1,9 +1,14 @@
 {
 	"appId": "com.alfajr.elearning",
 	"appName": "Alfajr E-Learning",
-	"webDir": "public",
+	"webDir": "out",
 	"server": {
-		"url": "https://alfajr-elearning.vercel.app/",
+		"url": "https://alfajr-elearning.vercel.app",
+		"allowNavigation": [
+			"alfajr-elearning.vercel.app",
+			"*.alfajr-elearning.vercel.app",
+			"alfajr-elearning-*.vercel.app"
+		],
 		"cleartext": true,
 		"androidScheme": "https"
 	},

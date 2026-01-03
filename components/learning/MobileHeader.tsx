@@ -21,7 +21,7 @@ const MobileHeader: React.FC<MobileHeaderProps> = ({ onMenuClick }) => {
           <DownloadAppButton 
             variant="outline" 
             text="App" 
-            apkUrl="/Alfajr-elearning.apk" 
+            apkUrl="/api/download" 
             className="h-9 px-3 text-xs"
           />
           <button

@@ -3,11 +3,15 @@ import { CapacitorConfig } from '@capacitor/cli';
 const config: CapacitorConfig = {
   appId: 'com.alfajr.elearning',
   appName: 'Alfajr E-Learning',
-  webDir: 'public',
+  webDir: 'out',
   server: {
     // ⚠️ PRODUCTION MODE: Menggunakan domain Vercel
-    url: 'https://alfajr-elearning.vercel.app/', 
-    
+    url: 'https://alfajr-elearning.vercel.app', 
+    allowNavigation: [
+      "alfajr-elearning.vercel.app",
+      "*.alfajr-elearning.vercel.app",
+      "alfajr-elearning-*.vercel.app"
+    ],
     cleartext: true,
     androidScheme: 'https'
   },

@@ -1,4 +1,4 @@
-// proxy.ts (ROOT PROJECT) - Updated middleware
+// proxy.ts (ROOT PROJECT) - Next.js 16 Proxy Convention
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
@@ -14,6 +14,7 @@ const PUBLIC_API_ROUTES = [
   '/api/auth/logout',
   '/api/auth/check',
   '/api/admin',
+  '/api/download', // PENTING: Izinkan download APK tanpa login
 ];
 
 // Routes that are only accessible when NOT authenticated
@@ -24,18 +25,21 @@ const GUEST_ONLY_ROUTES = [
 
 // Admin routes prefix
 const ADMIN_ROUTES = '/admin';
-const EMPLOYEE_ROUTES = '/learning';
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   
-  console.log('[PROXY] Processing:', pathname);
+  // ============================================
+  // 0. BYPASS FOR API ROUTES & STATIC FILES
+  // ============================================
   
-  // ============================================
-  // 0. BYPASS PROXY FOR API ROUTES (CRITICAL!)
-  // ============================================
+  // 1. Bypass API Routes yang publik
   if (PUBLIC_API_ROUTES.some(route => pathname.startsWith(route))) {
-    console.log('[PROXY] ✅ Bypassing API route:', pathname);
+    return NextResponse.next();
+  }
+
+  // 2. Bypass file statis (APK, gambar, dll) secara manual agar tidak error regex
+  if (pathname.match(/\.(svg|png|jpg|jpeg|gif|webp|apk)$/)) {
     return NextResponse.next();
   }
   
@@ -43,22 +47,17 @@ export function proxy(request: NextRequest) {
   const authToken = request.cookies.get('auth_token')?.value;
   const userRole = request.cookies.get('user_role')?.value;
   
-  console.log('[PROXY] Auth Status - Token:', !!authToken, 'Role:', userRole);
-  
   const isPublicRoute = PUBLIC_ROUTES.includes(pathname);
   const isGuestOnlyRoute = GUEST_ONLY_ROUTES.includes(pathname);
   const isAdminRoute = pathname.startsWith(ADMIN_ROUTES);
-  const isEmployeeRoute = pathname.startsWith(EMPLOYEE_ROUTES);
 
   // ============================================
   // 1. HANDLE PUBLIC ROUTES
   // ============================================
   if (isPublicRoute) {
     if (isGuestOnlyRoute && authToken) {
-      console.log('[PROXY] Guest-only route but authenticated, redirecting based on role');
       return redirectBasedOnRole(userRole, request.url);
     }
-    console.log('[PROXY] ✅ Allowing public route');
     return NextResponse.next();
   }
 
@@ -66,7 +65,6 @@ export function proxy(request: NextRequest) {
   // 2. CHECK AUTHENTICATION
   // ============================================
   if (!authToken) {
-    console.log('[PROXY] ❌ No auth token, redirecting to login');
     return redirectToLogin(request.url, pathname);
   }
 
@@ -75,35 +73,18 @@ export function proxy(request: NextRequest) {
   // ============================================
   if (isAdminRoute) {
     if (userRole !== 'admin') {
-      console.log('[PROXY] ❌ Not admin, redirecting to employee dashboard');
       return NextResponse.redirect(new URL('/learning/dashboard', request.url));
     }
-    console.log('[PROXY] ✅ Admin access granted');
     return NextResponse.next();
   }
-
-  /* 
-    NONAKTIFKAN SEMENTARA: Logika ini mengalihkan admin secara paksa dari halaman pegawai.
-    Dinonaktifkan agar admin bisa memilih untuk melihat panel pegawai.
-  if (isEmployeeRoute) {
-    if (userRole === 'admin') {
-      console.log('[PROXY] Admin accessing employee route, redirecting to admin dashboard');
-      return NextResponse.redirect(new URL('/admin/dashboard', request.url));
-    }
-    console.log('[PROXY] ✅ Employee access granted');
-    return NextResponse.next();
-  }
-  */
 
   // ============================================
   // 4. ROOT PATH REDIRECT
   // ============================================
   if (pathname === '/') {
-    console.log('[PROXY] Root path, redirecting based on role');
     return redirectBasedOnRole(userRole, request.url);
   }
 
-  console.log('[PROXY] ✅ Default allow');
   return NextResponse.next();
 }
 
@@ -112,7 +93,6 @@ function redirectToLogin(originalUrl: string, currentPath: string) {
   if (!currentPath.startsWith('/api/')) {
     loginUrl.searchParams.set('redirect', currentPath);
   }
-  console.log('[PROXY] Redirecting to:', loginUrl.toString());
   return NextResponse.redirect(loginUrl);
 }
 
@@ -121,12 +101,18 @@ function redirectBasedOnRole(role: string | undefined, originalUrl: string) {
     ? new URL('/admin/dashboard', originalUrl)
     : new URL('/learning/dashboard', originalUrl);
   
-  console.log('[PROXY] Role-based redirect to:', redirectUrl.toString());
   return NextResponse.redirect(redirectUrl);
 }
 
+// Matcher configuration yang lebih sederhana dan aman
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    /*
+     * Match all request paths except for the ones starting with:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     */
+    '/((?!_next/static|_next/image|favicon.ico).*)',
   ],
 };
