@@ -6,6 +6,7 @@ import type { NextRequest } from 'next/server';
 const PUBLIC_ROUTES = [
   '/login', 
   '/forgot-password',
+  '/download-app', // Allow access to download page
 ];
 
 // API routes that should bypass proxy completely
@@ -15,6 +16,7 @@ const PUBLIC_API_ROUTES = [
   '/api/auth/check',
   '/api/admin',
   '/api/download', // PENTING: Izinkan download APK tanpa login
+  '/api/auth/login-native', // Allow native login API
 ];
 
 // Routes that are only accessible when NOT authenticated
@@ -39,10 +41,31 @@ export function proxy(request: NextRequest) {
   }
 
   // 2. Bypass file statis (APK, gambar, dll) secara manual agar tidak error regex
-  if (pathname.match(/\.(svg|png|jpg|jpeg|gif|webp|apk)$/)) {
+  if (pathname.match(/\.(svg|png|jpg|jpeg|gif|webp|apk|ico)$/)) {
     return NextResponse.next();
   }
   
+  // ============================================
+  // MOBILE BROWSER GUARD (Added from middleware)
+  // ============================================
+  const userAgent = request.headers.get('user-agent') || '';
+  
+  // 1. Deteksi apakah user menggunakan HP (Android/iOS)
+  const isMobile = /Android|iPhone|iPad|iPod/i.test(userAgent);
+  
+  // 2. Deteksi apakah request datang dari Aplikasi kita
+  // Relaxed check: Look for 'AlfajrApp' (case insensitive) instead of strict version
+  const isApp = /AlfajrApp/i.test(userAgent);
+
+  // 3. Cek apakah sedang di halaman download (sudah dihandle bypass/public routes, tapi kita cek explicit utk redirect)
+  const isDownloadPage = pathname.startsWith('/download-app');
+
+  // LOGIKA: Jika Mobile + Bukan App + Bukan Halaman Download -> Redirect
+  // Note: Static files/API sudah di-return di atas, jadi aman.
+  if (isMobile && !isApp && !isDownloadPage) {
+    return NextResponse.redirect(new URL('/download-app', request.url));
+  }
+
   // Get authentication cookies
   const authToken = request.cookies.get('auth_token')?.value;
   const userRole = request.cookies.get('user_role')?.value;

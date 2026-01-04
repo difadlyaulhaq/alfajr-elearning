@@ -12,7 +12,17 @@
 		"cleartext": true,
 		"androidScheme": "https"
 	},
+	"android": {
+		"appendUserAgent": " AlfajrApp/1.0"
+	},
 	"plugins": {
+		"FirebaseAuthentication": {
+			"skipNativeAuth": false,
+			"providers": [
+				"google.com"
+			],
+			"serverClientId": "342608432294-6okq9uilstspcmrs7av1obn5859ktr32.apps.googleusercontent.com"
+		},
 		"PrivacyScreen": {
 			"enable": true,
 			"imageName": "Splash"

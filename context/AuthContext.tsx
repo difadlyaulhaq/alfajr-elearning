@@ -83,19 +83,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       try {
-        if (firebaseUser) {
-          // 1. Cek apakah session server sudah valid
-          const res = await fetch('/api/auth/session');
-          if (res.ok) {
-            const data = await res.json();
-            if (data.isAuthenticated) {
-              // Session valid, pakai data user dari server
-              setUser(data.user);
-              setIsLoading(false);
-              return;
-            }
+        // ALWAYS check session from server first, because native login might establish 
+        // a server cookie without signing in the Firebase JS SDK properly.
+        const res = await fetch('/api/auth/session');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.isAuthenticated) {
+            setUser(data.user);
+            setIsLoading(false);
+            return;
           }
+        }
 
+        if (firebaseUser) {
           // 2. Jika session server mati tapi Firebase hidup, lakukan silent login (Sync)
           const token = await firebaseUser.getIdToken();
           const loginRes = await fetch('/api/auth/session', {
@@ -113,7 +113,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             setUser(null);
           }
         } else {
-          // Tidak ada user di Firebase
+          // Tidak ada user di Firebase dan tidak ada session server
           setUser(null);
         }
       } catch (error) {

@@ -11,8 +11,30 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ isAuthenticated: false, error: 'Token tidak ditemukan' }, { status: 401 });
     }
 
-    const decodedToken = await adminAuth.verifyIdToken(token);
-    const { uid } = decodedToken;
+    let uid;
+
+    try {
+        // Coba validasi sebagai Firebase Token
+        const decodedToken = await adminAuth.verifyIdToken(token);
+        uid = decodedToken.uid;
+    } catch (error: any) {
+        // Fallback: Coba validasi sebagai Google ID Token
+        if (error.codePrefix === 'auth' && error.errorInfo?.code === 'auth/argument-error') {
+             try {
+                const googleRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${token}`);
+                if (!googleRes.ok) throw new Error('Invalid Google Token');
+                
+                const googleData = await googleRes.json();
+                const userRecord = await adminAuth.getUserByEmail(googleData.email);
+                uid = userRecord.uid;
+             } catch (googleErr) {
+                 throw error; // Throw error asli jika fallback gagal
+             }
+        } else {
+            throw error;
+        }
+    }
+
     const userDoc = await adminDb.collection('users').doc(uid).get();
 
     if (!userDoc.exists) {

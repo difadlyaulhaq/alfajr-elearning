@@ -7,6 +7,7 @@ const config: CapacitorConfig = {
   server: {
     // ⚠️ PRODUCTION MODE: Menggunakan domain Vercel
     url: 'https://alfajr-elearning.vercel.app', 
+    // url: 'http://10.200.159.173:3000',
     allowNavigation: [
       "alfajr-elearning.vercel.app",
       "*.alfajr-elearning.vercel.app",
@@ -15,7 +16,17 @@ const config: CapacitorConfig = {
     cleartext: true,
     androidScheme: 'https'
   },
+  android: {
+    appendUserAgent: " AlfajrApp/1.0"
+  },
   plugins: {
+    FirebaseAuthentication: {
+      skipNativeAuth: false,
+      providers: ["google.com"],
+      // Tambahkan konfigurasi ini
+      // @ts-ignore
+      serverClientId: "342608432294-6okq9uilstspcmrs7av1obn5859ktr32.apps.googleusercontent.com", 
+    },
     PrivacyScreen: {
       enable: true,
       imageName: 'Splash',

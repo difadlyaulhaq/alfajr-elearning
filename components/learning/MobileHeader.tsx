@@ -18,12 +18,6 @@ const MobileHeader: React.FC<MobileHeaderProps> = ({ onMenuClick }) => {
           <span className="font-bold text-lg text-black">E-Learning</span>
         </div>
         <div className="flex items-center gap-2">
-          <DownloadAppButton 
-            variant="outline" 
-            text="App" 
-            apkUrl="/api/download" 
-            className="h-9 px-3 text-xs"
-          />
           <button
             onClick={onMenuClick}
             className="p-2 text-black"
