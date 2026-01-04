@@ -77,9 +77,9 @@ export default function PWAEnforcer({ children }: { children: React.ReactNode })
              apkUrl="/api/download"
            /> 
            
-           <p className="text-[11px] text-gray-400">
+            <p className="text-[15px] text-red-500 font-bold">
              *Wajib untuk pengguna Android
-           </p>
+            </p>
         </div>
         
         {/* Manual hint in case prompt doesn't show */}

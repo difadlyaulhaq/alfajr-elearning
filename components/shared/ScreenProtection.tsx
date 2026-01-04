@@ -45,23 +45,26 @@ export const ScreenProtection: React.FC<ScreenProtectionProps> = ({
   >([]);
   const [isMobileWeb, setIsMobileWeb] = useState(false);
 
-  // Detect Mobile Web (Not Native App)
+  // Detect Mobile Web (Not Native App) - CLIENT SIDE BACKUP PROTECTION
+  // Primary protection is in Middleware (proxy.ts). This is just a fallback.
   useEffect(() => {
     const checkMobileWeb = () => {
-      // Check if it's a mobile device (based on UA/Screen) BUT NOT a native Capacitor app
-      if (isMobileDevice() && !Capacitor.isNativePlatform()) {
-        setIsMobileWeb(true);
-      } else {
-        setIsMobileWeb(false);
+      // Logic: Mobile Device + NOT Native App + NOT Download Page
+      if (
+        isMobileDevice() && 
+        !Capacitor.isNativePlatform() && 
+        window.location.pathname !== '/download-app'
+      ) {
+        // Redirect to download page instead of showing overlay
+        window.location.href = '/download-app';
       }
     };
 
     checkMobileWeb();
-    window.addEventListener('resize', checkMobileWeb);
-    return () => window.removeEventListener('resize', checkMobileWeb);
   }, []);
 
   const { isBlurred, isRecording, isDevToolsOpen, isViolation, isCoolDownActive, countdown, violationType } = useScreenProtection({
+    // ... config
     enableWatermark,
     enableBlurOnFocusLoss,
     enableKeyboardBlock,
@@ -71,12 +74,13 @@ export const ScreenProtection: React.FC<ScreenProtectionProps> = ({
     watermarkText,
     videoElementRef,
     onScreenshotAttempt: () => {
+      // ... handler
       if (showWarningOnAttempt) {
         setWarningMessage('⚠️ Screenshot tidak diperbolehkan!');
         setShowWarning(true);
         setTimeout(() => setShowWarning(false), 3000);
       }
-
+      // ... log
       fetch('/api/security/log', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -88,6 +92,7 @@ export const ScreenProtection: React.FC<ScreenProtectionProps> = ({
       }).catch(console.error);
     },
     onRecordingDetected: () => {
+       // ... handler
       if (showWarningOnAttempt) {
         setWarningMessage('⚠️ Screen recording terdeteksi!');
         setShowWarning(true);
@@ -104,6 +109,8 @@ export const ScreenProtection: React.FC<ScreenProtectionProps> = ({
       }).catch(console.error);
     },
   });
+
+  // ... (rest of the hooks)
 
   // Generate floating watermark positions
   useEffect(() => {
@@ -209,39 +216,8 @@ export const ScreenProtection: React.FC<ScreenProtectionProps> = ({
         }
       `}</style>
 
-      {/* Mobile App Enforcer Overlay */}
-      {isMobileWeb && (
-        <div className="fixed inset-0 z-[9999999] bg-white flex flex-col items-center justify-center p-6 text-center">
-          <div className="max-w-md w-full">
-            <div className="mb-8 relative">
-              <div className="absolute inset-0 bg-[#C5A059]/20 rounded-full blur-xl transform scale-150"></div>
-              <Smartphone size={80} className="text-[#C5A059] relative z-10 mx-auto" />
-            </div>
-            
-            <h1 className="text-2xl font-bold text-gray-900 mb-4">
-              Gunakan Aplikasi Mobile
-            </h1>
-            
-            <p className="text-gray-600 mb-8 leading-relaxed">
-              Untuk keamanan dan pengalaman terbaik, silakan akses E-Learning melalui aplikasi resmi Alfajr.
-              Akses via browser mobile tidak didukung.
-            </p>
-
-            <div className="space-y-4">
-              <DownloadAppButton 
-                 variant="primary"
-                 className="w-full py-4 text-lg shadow-xl"
-                 apkUrl="/api/download"
-              />
-              
-              <p className="text-xs text-gray-400 mt-6">
-                Jika Anda mengalami kendala instalasi, hubungi tim IT Support.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
+      {/* REMOVED: Mobile App Enforcer Overlay (Replaced by Client Redirect logic above) */}
+      
       {/* Anti-Screenshot Pattern */}
       <div className="anti-screenshot-pattern" />
 
