@@ -15,7 +15,6 @@ const PUBLIC_API_ROUTES = [
   '/api/auth/logout',
   '/api/auth/check',
   '/api/admin',
-  '/api/download', // PENTING: Izinkan download APK tanpa login
   '/api/auth/login-native', // Allow native login API
 ];
 

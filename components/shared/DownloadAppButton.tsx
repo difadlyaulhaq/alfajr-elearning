@@ -48,8 +48,8 @@ export default function DownloadAppButton({
   const handleInstallClick = async () => {
     // Priority 1: Direct APK Download (Android)
     if (apkUrl && !isIOS) {
-      // Gunakan API route untuk memaksa download APK dan menghindari cache/HTML issue
-      window.location.href = '/api/download';
+      // Gunakan URL yang diberikan
+      window.location.href = apkUrl;
       return;
     }
 
