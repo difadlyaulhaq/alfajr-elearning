@@ -7,7 +7,7 @@ const config: CapacitorConfig = {
   server: {
     // ⚠️ PRODUCTION MODE: Menggunakan domain Vercel
     url: 'https://alfajr-elearning.vercel.app', 
-    // url: 'http://10.200.159.173:3000',
+    // url: 'http://192.168.1.7:3000',
     allowNavigation: [
       "alfajr-elearning.vercel.app",
       "*.alfajr-elearning.vercel.app",
