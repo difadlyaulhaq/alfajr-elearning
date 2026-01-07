@@ -19,6 +19,23 @@ const nextConfig: NextConfig = {
       // ... domain lain yang sudah ada (misal firebasestorage, dll)
     ],
   },
+  async headers() {
+    return [
+      {
+        source: '/Alfajr-elearning.apk',
+        headers: [
+          {
+            key: 'Content-Type',
+            value: 'application/vnd.android.package-archive',
+          },
+          {
+            key: 'Content-Disposition',
+            value: 'attachment; filename="Alfajr-elearning.apk"',
+          },
+        ],
+      },
+    ];
+  },
   /* config options here */
 };
 
